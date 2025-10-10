@@ -253,11 +253,13 @@ checksum = "72b3254f16251a8381aa12e40e3c4d2f0199f8c6508fbecb9d91f575e0fbb8c6"
 name = "better-dns-jumper"
 version = "0.1.0"
 dependencies = [
+ "network-interface",
  "serde",
  "serde_json",
  "tauri",
  "tauri-build",
  "tauri-plugin-opener",
+ "winapi",
 ]
 
 [[package]]
@@ -2075,6 +2077,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ee6cda3051665f1fb8d9e08fc35c96d5a244fb1be711a03b71118828afc9a873"
 dependencies = [
  "jni-sys",
+]
+
+[[package]]
+name = "network-interface"
+version = "2.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "07709a6d4eba90ab10ec170a0530b3aafc81cb8a2d380e4423ae41fc55fe5745"
+dependencies = [
+ "cc",
+ "libc",
+ "thiserror 2.0.17",
+ "winapi",
 ]
 
 [[package]]

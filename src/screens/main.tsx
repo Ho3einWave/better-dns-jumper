@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
-import { DNS_SERVER, DNS_SERVERS } from "../constants/dns-servers";
+import { DNS_SERVERS } from "../constants/dns-servers";
 import { Button } from "@heroui/button";
+import { invoke } from "@tauri-apps/api/core";
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
@@ -12,6 +13,11 @@ const Main = () => {
     const dnsServerData = DNS_SERVERS.find(
         (server) => server.key === dnsServer
     );
+
+    useEffect(() => {
+        invoke("get_best_interface");
+    }, []);
+
     return (
         <div className="flex  gap-4 items-center flex-1 justify-center">
             <div>
