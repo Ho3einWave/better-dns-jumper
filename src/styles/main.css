@@ -1,0 +1,30 @@
+@import "tailwindcss";
+@plugin './hero.ts';
+@source '../../node_modules/@heroui/theme/dist/**/*.{js,ts,jsx,tsx}';
+@custom-variant dark (&:is(.dark *));
+
+@font-face {
+    font-family: "FunnelDisplay";
+    src: url("/FunnelDisplay.ttf") format("truetype");
+    font-weight: 100 900;
+    font-display: swap;
+}
+
+* {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+body {
+    font-family: "FunnelDisplay", sans-serif;
+}
+
+.bg-body {
+    @apply bg-zinc-950;
+}
+
+.inner-shadow-green-500 {
+    box-shadow: inset 0 0 15px 0 rgba(0, 255, 0, 0.6);
+}
