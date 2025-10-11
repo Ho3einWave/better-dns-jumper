@@ -4,11 +4,11 @@ import { Select, SelectItem } from "@heroui/select";
 import { DNS_SERVERS } from "../constants/dns-servers";
 import { Button } from "@heroui/button";
 import { useInterfaces } from "../hooks/useInterfaces";
-import { useDns } from "../hooks/useDns";
+import { useDns, useGetInterfaceDnsInfo } from "../hooks/useDns";
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
-    const [IfIdx, setIfIdx] = useState<number | null>(null);
+    const [IfIdx, setIfIdx] = useState<number | null>(0);
 
     const dnsServerData = DNS_SERVERS.find(
         (server) => server.key === dnsServer
@@ -17,11 +17,15 @@ const Main = () => {
     const { data: interfaces, isLoading: isLoadingInterfaces } =
         useInterfaces();
 
+    const { data: interfaceDnsInfo } = useGetInterfaceDnsInfo(IfIdx);
+
+    console.log(interfaceDnsInfo);
+
     const { mutate: setDns } = useDns();
 
     const handleSetDns = () => {
         setDns({
-            interface_idx: IfIdx ?? -1,
+            interface_idx: interfaceDnsInfo?.interface_index ?? IfIdx ?? 0,
             dns_servers: dnsServerData?.servers ?? [],
         });
     };
@@ -42,7 +46,7 @@ const Main = () => {
             </div>
             <div className="min-w-82 flex flex-col gap-2">
                 <Select
-                    label="Provider"
+                    aira-label="Provider"
                     items={DNS_SERVERS}
                     selectedKeys={[dnsServer]}
                     disallowEmptySelection={true}
@@ -58,13 +62,13 @@ const Main = () => {
                     )}
                 </Select>
                 <Select
-                    label="Interface"
+                    aria-label="Interface"
                     items={[
-                        { index: -1, name: "Auto", mac: null, addrs: [] },
+                        { index: 0, name: "Auto", mac: null, addrs: [] },
                         ...(interfaces ?? []),
                     ]}
                     isLoading={isLoadingInterfaces}
-                    selectedKeys={IfIdx ? [IfIdx.toString()] : ["-1"]}
+                    selectedKeys={IfIdx ? [IfIdx.toString()] : ["0"]}
                     disallowEmptySelection={true}
                     maxListboxHeight={200}
                     onSelectionChange={(keys) =>
@@ -76,9 +80,9 @@ const Main = () => {
                             <div className="flex gap-1 items-center ">
                                 <div>{items.name}</div>
                                 <div className="text-xs text-zinc-400">
-                                    {items.index === -1
-                                        ? "Auto"
-                                        : items.index.toString()}
+                                    {items.index === 0
+                                        ? interfaceDnsInfo?.interface_name
+                                        : `#${items.index}`}
                                 </div>
                             </div>
                         </SelectItem>
@@ -96,6 +100,21 @@ const Main = () => {
                     <div className="flex justify-between">
                         <div>Tags:</div>
                         <div>{dnsServerData?.tags.join(", ")}</div>
+                    </div>
+                    <div className="flex justify-between">
+                        <div>Interface:</div>
+                        <div>
+                            {IfIdx === 0 ? (
+                                <span className="flex gap-1 items-center">
+                                    Auto
+                                    <span className="text-zinc-400">
+                                        ({interfaceDnsInfo?.interface_name})
+                                    </span>
+                                </span>
+                            ) : (
+                                `${interfaceDnsInfo?.interface_name}`
+                            )}
+                        </div>
                     </div>
                 </div>
                 <div>

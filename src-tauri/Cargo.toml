@@ -24,3 +24,4 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 winapi = { version = "0.3.9", features = ["iphlpapi", "winerror"] }
 network-interface = "2.0.3"
+wmi = "0.17.3"

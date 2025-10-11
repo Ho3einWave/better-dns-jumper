@@ -8,6 +8,13 @@ export const useInterfaces = () => {
     });
 };
 
+export const useBestInterface = () => {
+    return useQuery({
+        queryKey: ["best_interface"],
+        queryFn: () => invoke<Interface>("get_best_interface"),
+    });
+};
+
 type Interface = {
     name: string;
     index: number;

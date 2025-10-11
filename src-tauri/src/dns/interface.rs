@@ -7,7 +7,7 @@ use std::net::{ Ipv4Addr};
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use winapi::um::iphlpapi::GetBestInterface;
 
-pub fn get_best_interface() -> Result<u32, String> {
+pub fn get_best_interface_idx() -> Result<u32, String> {
     let dest_ip = Ipv4Addr::new(8, 8, 8, 8);
     let dest_ip_u32 = ipv4_to_u32(dest_ip);
 
@@ -65,15 +65,15 @@ pub fn get_interface_by_index(index: u32) -> Result<Interface, String> {
 
 #[derive(Debug, Clone,Serialize,Deserialize)]
 pub struct Interface {
-    name: String,
-    index: u32,
-    mac: Option<String>,
-    addrs: Vec<Address>,
+    pub name: String,
+    pub index: u32,
+    pub mac: Option<String>,
+    pub addrs: Vec<Address>,
 }
 
 #[derive(Debug, Clone,Serialize,Deserialize)]
 pub struct Address {
-    ip: String,
-    subnet: Option<String>,
-    gateway: Option<String>,
+    pub ip: String,
+    pub subnet: Option<String>,
+    pub gateway: Option<String>,
 }
