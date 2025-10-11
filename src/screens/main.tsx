@@ -1,23 +1,39 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
 import { DNS_SERVERS } from "../constants/dns-servers";
 import { Button } from "@heroui/button";
-import { invoke } from "@tauri-apps/api/core";
+import { useInterfaces } from "../hooks/useInterfaces";
+import { useDns } from "../hooks/useDns";
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
-    const handleToggle = () => {
-        setIsActive(!isActive);
-    };
+    const [IfIdx, setIfIdx] = useState<number | null>(null);
+
     const dnsServerData = DNS_SERVERS.find(
         (server) => server.key === dnsServer
     );
 
-    useEffect(() => {
-        invoke("get_best_interface");
-    }, []);
+    const { data: interfaces, isLoading: isLoadingInterfaces } =
+        useInterfaces();
 
+    const { mutate: setDns } = useDns();
+
+    const handleSetDns = () => {
+        setDns({
+            interface_idx: IfIdx ?? -1,
+            dns_servers: dnsServerData?.servers ?? [],
+        });
+    };
+    const handleToggle = () => {
+        console.log("toggle");
+        if (!isActive) {
+            handleSetDns();
+        }
+        setIsActive((prev) => {
+            return !prev;
+        });
+    };
     return (
         <div className="flex  gap-4 items-center flex-1 justify-center">
             <div>
@@ -26,6 +42,7 @@ const Main = () => {
             </div>
             <div className="min-w-82 flex flex-col gap-2">
                 <Select
+                    label="Provider"
                     items={DNS_SERVERS}
                     selectedKeys={[dnsServer]}
                     disallowEmptySelection={true}
@@ -37,6 +54,33 @@ const Main = () => {
                     {(items) => (
                         <SelectItem key={items.key} textValue={items.name}>
                             {items.name}
+                        </SelectItem>
+                    )}
+                </Select>
+                <Select
+                    label="Interface"
+                    items={[
+                        { index: -1, name: "Auto", mac: null, addrs: [] },
+                        ...(interfaces ?? []),
+                    ]}
+                    isLoading={isLoadingInterfaces}
+                    selectedKeys={IfIdx ? [IfIdx.toString()] : ["-1"]}
+                    disallowEmptySelection={true}
+                    maxListboxHeight={200}
+                    onSelectionChange={(keys) =>
+                        setIfIdx(parseInt(keys.currentKey as string))
+                    }
+                >
+                    {(items) => (
+                        <SelectItem key={items.index} textValue={items.name}>
+                            <div className="flex gap-1 items-center ">
+                                <div>{items.name}</div>
+                                <div className="text-xs text-zinc-400">
+                                    {items.index === -1
+                                        ? "Auto"
+                                        : items.index.toString()}
+                                </div>
+                            </div>
                         </SelectItem>
                     )}
                 </Select>

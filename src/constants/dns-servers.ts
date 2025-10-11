@@ -1,4 +1,4 @@
-export const DNS_SERVERS = [
+export const DNS_SERVERS: DNS_SERVER[] = [
     {
         key: "GOOGLE",
         name: "Google DNS",
@@ -41,6 +41,11 @@ export const DNS_SERVERS = [
         servers: ["77.88.8.8", "77.88.8.1"],
         tags: ["Web"],
     },
-] as const;
+];
 
-export type DNS_SERVER = (typeof DNS_SERVERS)[number];
+export type DNS_SERVER = {
+    key: string;
+    name: string;
+    servers: string[];
+    tags: string[];
+};

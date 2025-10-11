@@ -1,7 +1,8 @@
+use serde::{Deserialize, Serialize};
 use winapi::shared::{minwindef::DWORD, winerror::ERROR_SUCCESS};
 
 use super::utils::ipv4_to_u32;
-use std::net::Ipv4Addr;
+use std::net::{ Ipv4Addr};
 
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use winapi::um::iphlpapi::GetBestInterface;
@@ -25,21 +26,54 @@ pub fn get_best_interface() -> Result<u32, String> {
     return Ok(interface_index);
 }
 
-pub fn get_all_interfaces() -> Result<Vec<NetworkInterface>, String> {
+pub fn get_all_interfaces() -> Result<Vec<Interface>, String> {
     let interfaces = NetworkInterface::show();
     if let Ok(interfaces) = interfaces {
-        return Ok(interfaces);
+        return Ok(interfaces.iter().map(|interface| Interface {
+            name: interface.name.clone(),
+            index: interface.index,
+            mac: interface.mac_addr.clone(),
+            addrs: interface.addr.iter().map(|addr| Address {
+                ip: addr.ip().to_string(),
+                subnet: addr.netmask().map(|netmask| netmask.to_string()),
+                gateway: addr.broadcast().map(|broadcast| broadcast.to_string()),
+            }).collect(),
+        }).collect());
     } else {
         return Err(format!("error: {}", interfaces.err().unwrap()));
     }
 }
 
-pub fn get_interface_by_index(index: u32) -> Result<NetworkInterface, String> {
+pub fn get_interface_by_index(index: u32) -> Result<Interface, String> {
     let interfaces = get_all_interfaces()?;
     let interface = interfaces.iter().find(|interface| interface.index == index);
     if let Some(interface) = interface {
-        return Ok(interface.clone());
+        return Ok(Interface {
+            name: interface.name.clone(),
+            index: interface.index,
+            mac: interface.mac.clone(),
+            addrs: interface.addrs.iter().map(|addr| Address {
+                ip: addr.ip.clone(),
+                subnet: addr.subnet.clone(),
+                gateway: addr.gateway.clone(),
+            }).collect(),
+        });
     } else {
         return Err(format!("interface not found"));
     }
+}
+
+#[derive(Debug, Clone,Serialize,Deserialize)]
+pub struct Interface {
+    name: String,
+    index: u32,
+    mac: Option<String>,
+    addrs: Vec<Address>,
+}
+
+#[derive(Debug, Clone,Serialize,Deserialize)]
+pub struct Address {
+    ip: String,
+    subnet: Option<String>,
+    gateway: Option<String>,
 }

@@ -17,6 +17,11 @@
     -ms-user-select: none;
 }
 
+html,
+body {
+    overscroll-behavior: none;
+}
+
 body {
     font-family: "FunnelDisplay", sans-serif;
 }
