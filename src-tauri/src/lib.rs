@@ -1,11 +1,17 @@
 mod dns;
-use dns::{get_best_interface,get_interfaces,set_dns,get_interface_dns_info};
+use dns::{clear_dns, get_best_interface, get_interface_dns_info, get_interfaces, set_dns};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
-        .invoke_handler(tauri::generate_handler![get_best_interface, get_interfaces, set_dns, get_interface_dns_info])
+        .invoke_handler(tauri::generate_handler![
+            get_best_interface,
+            get_interfaces,
+            set_dns,
+            get_interface_dns_info,
+            clear_dns,
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
