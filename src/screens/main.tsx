@@ -60,10 +60,9 @@ const Main = () => {
         });
     };
     return (
-        <div className="flex  gap-4 items-center flex-1 justify-center">
+        <div className="flex flex-col gap-4 items-center flex-1 justify-center">
             <div>
                 <ToggleButton isActive={isActive} onClick={handleToggle} />
-                <h1>DNS is active</h1>
             </div>
             <div className="min-w-82 flex flex-col gap-2">
                 <Select
