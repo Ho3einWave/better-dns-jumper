@@ -1,6 +1,7 @@
 import { useState } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
+import { Tooltip } from "@heroui/tooltip";
 import { DNS_SERVERS } from "../constants/dns-servers";
 import { Button } from "@heroui/button";
 import { useInterfaces } from "../hooks/useInterfaces";
@@ -12,6 +13,8 @@ import {
 } from "../hooks/useDns";
 import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
+import { Broom } from "../components/icons/Broom";
+import { addToast } from "@heroui/toast";
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
@@ -37,7 +40,27 @@ const Main = () => {
             refetchInterfaceDnsInfo();
         },
     });
-    const { mutate: clearDnsCache } = useClearDnsCache();
+    const { mutate: clearDnsCache } = useClearDnsCache({
+        onSuccess: () => {
+            console.log("DNS cleared");
+            addToast({
+                title: "DNS cleared",
+                color: "success",
+                icon: <Broom className="text-xl" />,
+            });
+        },
+        onError: (error) => {
+            console.log(
+                "[handleClearDnsCache] Error clearing DNS cache",
+                error
+            );
+            addToast({
+                title: "Error clearing DNS cache",
+                color: "danger",
+                icon: <Broom className="text-xl" />,
+            });
+        },
+    });
     const handleSetDns = () => {
         setDns({
             path: interfaceDnsInfo?.path ?? "",
@@ -62,6 +85,7 @@ const Main = () => {
     };
 
     const handleClearDnsCache = () => {
+        console.log("[handleClearDnsCache] Clearing DNS cache");
         clearDnsCache();
     };
 
@@ -73,6 +97,7 @@ const Main = () => {
             <div className="min-w-82 flex flex-col gap-2">
                 <Select
                     aria-label="Interface"
+                    aria-labelledby="Interface"
                     items={[
                         { index: 0, name: "Auto", mac: null, addrs: [] },
                         ...(interfaces ?? []),
@@ -102,6 +127,7 @@ const Main = () => {
                 </Select>
                 <Select
                     aira-label="Provider"
+                    aria-labelledby="Provider"
                     items={DNS_SERVERS}
                     selectedKeys={[dnsServer]}
                     disallowEmptySelection={true}
@@ -153,9 +179,15 @@ const Main = () => {
                     )}
                 </div>
                 <div>
-                    <Button size="sm" onPress={handleClearDnsCache}>
-                        Clear Cache
-                    </Button>
+                    <Tooltip
+                        aria-label="Clear DNS Cache"
+                        content="Clear DNS Cache"
+                        placement="top"
+                    >
+                        <Button isIconOnly onPress={handleClearDnsCache}>
+                            <Broom className="text-xl" />
+                        </Button>
+                    </Tooltip>
                 </div>
             </div>
         </div>

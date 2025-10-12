@@ -23,6 +23,7 @@ export const useClearDns = (
         mutationFn: (params: { path: string }) => {
             return invoke<void>("clear_dns", params);
         },
+
         ...params,
     });
 };
@@ -40,11 +41,14 @@ export const useGetInterfaceDnsInfo = (interface_idx: number | null) => {
     });
 };
 
-export const useClearDnsCache = () => {
+export const useClearDnsCache = (
+    params?: MutationOptions<void, Error, void>
+) => {
     return useMutation({
         mutationFn: () => {
             return invoke<void>("clear_dns_cache");
         },
+        ...params,
     });
 };
 

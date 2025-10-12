@@ -44,6 +44,7 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, St
     return interface_dns_info;
 }
 
+// TODO: Change this method to use native windows api instead of wmi on windows 8+ or newer
 pub fn apply_dns_by_path(path: String, dns_servers: Vec<String>) -> Result<(), String> {
     let wmi_con = super::utils::create_wmi_connection()
         .map_err(|e| format!("WMI connection failed: {}", e))?;
@@ -86,8 +87,9 @@ pub fn clear_dns_cache() -> Result<(), String> {
     unsafe {
         let result = DnsFlushResolverCache();
 
+        println!("result: {}", result);
         match result {
-            0 => Ok(()),
+            1 => Ok(()),
             _ => Err(format!("Failed to clear DNS cache")),
         }
     }

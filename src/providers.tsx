@@ -1,6 +1,7 @@
 import { HeroUIProvider } from "@heroui/system";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
+import { ToastProvider } from "@heroui/toast";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -18,6 +19,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
             <HeroUIProvider className="h-full w-full">
                 {children}
             </HeroUIProvider>
+            <ToastProvider
+                toastProps={{
+                    size: "sm",
+                    classNames: {
+                        base: "max-w-72",
+                    },
+                }}
+            />
         </QueryClientProvider>
     );
 }
