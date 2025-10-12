@@ -43,3 +43,9 @@ pub fn clear_dns(path: String) -> Result<(), String> {
     let result = dns_utils::clear_dns_by_path(path);
     return result;
 }
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn clear_dns_cache() -> Result<(), String> {
+    let result = dns_utils::clear_dns_cache();
+    return result;
+}

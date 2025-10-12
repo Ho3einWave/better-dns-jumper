@@ -1,5 +1,10 @@
 use serde::{Deserialize, Serialize};
 
+#[link(name = "dnsapi")]
+extern "system" {
+    fn DnsFlushResolverCache() -> i32;
+}
+
 pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, String> {
     let interface_info = super::interface::get_interface_by_index(interface_idx);
     let wmi_con = super::utils::create_wmi_connection()
@@ -74,6 +79,17 @@ pub fn clear_dns_by_path(path: String) -> Result<(), String> {
     match result {
         Ok(_) => Ok(()),
         Err(e) => Err(e.to_string()),
+    }
+}
+
+pub fn clear_dns_cache() -> Result<(), String> {
+    unsafe {
+        let result = DnsFlushResolverCache();
+
+        match result {
+            0 => Ok(()),
+            _ => Err(format!("Failed to clear DNS cache")),
+        }
     }
 }
 

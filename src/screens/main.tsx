@@ -8,6 +8,7 @@ import {
     useSetDns,
     useGetInterfaceDnsInfo,
     useClearDns,
+    useClearDnsCache,
 } from "../hooks/useDns";
 import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
@@ -36,7 +37,7 @@ const Main = () => {
             refetchInterfaceDnsInfo();
         },
     });
-
+    const { mutate: clearDnsCache } = useClearDnsCache();
     const handleSetDns = () => {
         setDns({
             path: interfaceDnsInfo?.path ?? "",
@@ -59,6 +60,11 @@ const Main = () => {
             return !prev;
         });
     };
+
+    const handleClearDnsCache = () => {
+        clearDnsCache();
+    };
+
     return (
         <div className="flex flex-col gap-4 items-center flex-1 justify-center">
             <div>
@@ -147,7 +153,9 @@ const Main = () => {
                     )}
                 </div>
                 <div>
-                    <Button size="sm">Clear Cache</Button>
+                    <Button size="sm" onPress={handleClearDnsCache}>
+                        Clear Cache
+                    </Button>
                 </div>
             </div>
         </div>

@@ -40,6 +40,14 @@ export const useGetInterfaceDnsInfo = (interface_idx: number | null) => {
     });
 };
 
+export const useClearDnsCache = () => {
+    return useMutation({
+        mutationFn: () => {
+            return invoke<void>("clear_dns_cache");
+        },
+    });
+};
+
 export type InterfaceDnsInfo = {
     interface_index: number;
     dns_servers: string[];

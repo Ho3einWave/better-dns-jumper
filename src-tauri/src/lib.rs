@@ -1,5 +1,7 @@
 mod dns;
-use dns::{clear_dns, get_best_interface, get_interface_dns_info, get_interfaces, set_dns};
+use dns::{
+    clear_dns, clear_dns_cache, get_best_interface, get_interface_dns_info, get_interfaces, set_dns,
+};
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -11,6 +13,7 @@ pub fn run() {
             set_dns,
             get_interface_dns_info,
             clear_dns,
+            clear_dns_cache,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
