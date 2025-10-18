@@ -2,7 +2,7 @@ import { useState } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
 import { Tooltip } from "@heroui/tooltip";
-import { DNS_SERVERS } from "../constants/dns-servers";
+import { DNS_SERVERS, PROTOCOLS } from "../constants/dns-servers";
 import { Button } from "@heroui/button";
 import { useInterfaces } from "../hooks/useInterfaces";
 import {
@@ -15,10 +15,14 @@ import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
 import { Broom } from "../components/icons/Broom";
 import { addToast } from "@heroui/toast";
+import { Reset } from "../components/icons/Reset";
+import { Texture } from "../components/icons/Texture";
+
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
     const [IfIdx, setIfIdx] = useState<number | null>(0);
+    const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
 
     const dnsServerData = DNS_SERVERS.find(
         (server) => server.key === dnsServer
@@ -85,8 +89,13 @@ const Main = () => {
     };
 
     const handleClearDnsCache = () => {
-        console.log("[handleClearDnsCache] Clearing DNS cache");
         clearDnsCache();
+    };
+
+    const handleResetDns = () => {
+        clearDns({
+            path: interfaceDnsInfo?.path ?? "",
+        });
     };
 
     return (
@@ -125,25 +134,46 @@ const Main = () => {
                         </SelectItem>
                     )}
                 </Select>
-                <Select
-                    aira-label="Provider"
-                    aria-labelledby="Provider"
-                    items={DNS_SERVERS}
-                    selectedKeys={[dnsServer]}
-                    disallowEmptySelection={true}
-                    onSelectionChange={(keys) =>
-                        setDnsServer(keys.currentKey as string)
-                    }
-                    maxListboxHeight={200}
-                    startContent={<DNSServer className="text-2xl" />}
-                    isDisabled={!interfaceDnsInfo?.path || isActive}
-                >
-                    {(items) => (
-                        <SelectItem key={items.key} textValue={items.name}>
-                            {items.name}
-                        </SelectItem>
-                    )}
-                </Select>
+                <div className="grid grid-cols-6 gap-2">
+                    <Select
+                        aira-label="Provider"
+                        className="col-span-4"
+                        aria-labelledby="Provider"
+                        items={DNS_SERVERS}
+                        selectedKeys={[dnsServer]}
+                        disallowEmptySelection={true}
+                        onSelectionChange={(keys) =>
+                            setDnsServer(keys.currentKey as string)
+                        }
+                        maxListboxHeight={200}
+                        startContent={<DNSServer className="text-2xl" />}
+                        isDisabled={!interfaceDnsInfo?.path || isActive}
+                    >
+                        {(items) => (
+                            <SelectItem key={items.key} textValue={items.name}>
+                                {items.name}
+                            </SelectItem>
+                        )}
+                    </Select>
+                    <Select
+                        aria-label="Protocol"
+                        className="col-span-2"
+                        aria-labelledby="Protocol"
+                        items={PROTOCOLS}
+                        selectedKeys={[protocol]}
+                        disallowEmptySelection={true}
+                        onSelectionChange={(keys) =>
+                            setProtocol(keys.currentKey as string)
+                        }
+                        maxListboxHeight={200}
+                    >
+                        {(items) => (
+                            <SelectItem key={items.key} textValue={items.name}>
+                                {items.name}
+                            </SelectItem>
+                        )}
+                    </Select>
+                </div>
 
                 <div className="flex flex-col gap-2 bg-zinc-900 rounded-md p-2 text-nowrap text-sm">
                     <div className="flex justify-between">
@@ -178,7 +208,7 @@ const Main = () => {
                         </div>
                     )}
                 </div>
-                <div>
+                <div className="flex gap-2">
                     <Tooltip
                         aria-label="Clear DNS Cache"
                         content="Clear DNS Cache"
@@ -188,6 +218,20 @@ const Main = () => {
                             <Broom className="text-xl" />
                         </Button>
                     </Tooltip>
+                    <Tooltip
+                        aria-label="Reset DNS"
+                        content="Reset DNS"
+                        placement="top"
+                    >
+                        <Button isIconOnly onPress={handleResetDns}>
+                            <Reset className="text-xl" />
+                        </Button>
+                    </Tooltip>
+                    {new Array(5).fill(0).map((_, index) => (
+                        <Button isDisabled isIconOnly key={index}>
+                            <Texture className="text-xl opacity-50" />
+                        </Button>
+                    ))}
                 </div>
             </div>
         </div>

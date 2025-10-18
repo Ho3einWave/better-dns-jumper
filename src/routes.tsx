@@ -11,6 +11,14 @@ export const router = createHashRouter([
                 path: "/",
                 element: <Main />,
             },
+            {
+                path: "/network-interfaces",
+                element: <h1>Network Interfaces</h1>,
+            },
+            {
+                path: "/settings",
+                element: <h1>Settings</h1>,
+            },
         ],
     },
 ]);

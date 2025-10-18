@@ -13,6 +13,7 @@
     "@heroui/button": "^2.2.27",
     "@heroui/select": "^2.4.28",
     "@heroui/system": "^2.4.23",
+    "@heroui/tabs": "^2.2.24",
     "@heroui/theme": "^2.4.23",
     "@heroui/toast": "^2.0.17",
     "@heroui/tooltip": "^2.2.24",

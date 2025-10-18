@@ -43,9 +43,25 @@ export const DNS_SERVERS: DNS_SERVER[] = [
     },
 ];
 
+export const PROTOCOLS: Protocol[] = [
+    {
+        key: "dns_udp",
+        name: "DNS",
+    },
+    {
+        key: "doh",
+        name: "DoH",
+    },
+];
+
 export type DNS_SERVER = {
     key: string;
     name: string;
     servers: string[];
     tags: string[];
+};
+
+export type Protocol = {
+    key: string;
+    name: string;
 };

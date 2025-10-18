@@ -12,10 +12,9 @@
   "app": {
     "windows": [
       {
-        "title": "better-dns-jumper",
+        "title": "Better DNS Jumper",
         "width": 700,
         "height": 450,
-        "decorations": false,
         "shadow": false,
         "resizable": false,
         "backgroundColor": "#09090b"
