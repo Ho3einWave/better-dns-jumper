@@ -5,11 +5,15 @@ export const useSetDns = (
     params?: MutationOptions<
         void,
         Error,
-        { path: string; dns_servers: string[] }
+        { path: string; dns_servers: string[]; dns_type: "doh" | "dns" }
     >
 ) => {
     return useMutation({
-        mutationFn: (params: { path: string; dns_servers: string[] }) => {
+        mutationFn: (params: {
+            path: string;
+            dns_servers: string[];
+            dns_type: "doh" | "dns";
+        }) => {
             return invoke<void>("set_dns", params);
         },
         ...params,

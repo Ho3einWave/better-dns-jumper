@@ -33,7 +33,11 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<dns_utils::Interface
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn set_dns(path: String, dns_servers: Vec<String>) -> Result<(), String> {
+pub fn set_dns(path: String, dns_servers: Vec<String>, dns_type: String) -> Result<(), String> {
+    println!(
+        "path: {}, dns_servers: {:?}, dns_type: {}",
+        path, dns_servers, dns_type
+    );
     let result = dns_utils::apply_dns_by_path(path, dns_servers);
     return result;
 }

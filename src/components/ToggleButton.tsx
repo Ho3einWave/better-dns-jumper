@@ -18,7 +18,7 @@ const ToggleButton = ({
             className={cn(
                 "flex items-center px-2 w-24 h-12 bg-zinc-800 rounded-full group relative transition-all duration-300",
                 isLoading ? "cursor-not-allowed opacity-70" : "cursor-pointer",
-                isActive && "bg-green-600 inner-shadow-green-500"
+                isActive && "bg-primary-500 inner-shadow-primary-500"
             )}
         >
             <div

@@ -17,16 +17,17 @@
     -ms-user-select: none;
 }
 
-html,
+/* html,
 body {
     overscroll-behavior: none;
-}
+} */
 
 body {
     font-family: "FunnelDisplay", sans-serif;
 }
 
-.bg-body {
+.bg-body,
+html {
     @apply bg-zinc-950;
 }
 

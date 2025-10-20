@@ -12,10 +12,11 @@ const Titlebar = () => {
     return (
         <div
             data-tauri-drag-region
-            className="flex w-full justify-between items-center bg-zinc-900/50"
+            className="flex w-full justify-between items-center bg-zinc-900 fixed top-0 left-0"
         >
             <h1 data-tauri-drag-region className="text-white ml-2">
-                Better DNS Jumper
+                <span className="font-bold text-primary-500">Better</span> DNS
+                Jumper
             </h1>
             <div className="flex gap-1">
                 <button

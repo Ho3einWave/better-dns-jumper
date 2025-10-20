@@ -28,14 +28,20 @@ const DefaultLayout = () => {
     return (
         <div className="flex flex-col h-full">
             <Titlebar />
-            <Outlet />
-            <div className="flex justify-center absolute bottom-4 left-1/2 -translate-x-1/2">
+            <div className="w-full h-full pt-8 flex flex-col">
+                <Outlet />
+            </div>
+            <div className="flex justify-center fixed top-1/2 left-4 -translate-y-1/2">
                 <Tabs
                     aria-label="DNS Jumper Tabs"
                     aria-labelledby="DNS Jumper Tabs"
                     size="sm"
-                    radius="full"
                     color="primary"
+                    radius="lg"
+                    classNames={{
+                        tab: "h-11",
+                    }}
+                    isVertical={true}
                     onSelectionChange={handleTabChange}
                 >
                     <Tab

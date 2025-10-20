@@ -2,7 +2,12 @@ import { useState } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
 import { Tooltip } from "@heroui/tooltip";
-import { DNS_SERVERS, PROTOCOLS } from "../constants/dns-servers";
+import {
+    DNS_SERVERS,
+    DOH_SERVERS,
+    PROTOCOLS,
+    SERVER,
+} from "../constants/dns-servers";
 import { Button } from "@heroui/button";
 import { useInterfaces } from "../hooks/useInterfaces";
 import {
@@ -17,6 +22,7 @@ import { Broom } from "../components/icons/Broom";
 import { addToast } from "@heroui/toast";
 import { Reset } from "../components/icons/Reset";
 import { Texture } from "../components/icons/Texture";
+import { Tab, Tabs } from "@heroui/tabs";
 
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
@@ -24,9 +30,9 @@ const Main = () => {
     const [IfIdx, setIfIdx] = useState<number | null>(0);
     const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
 
-    const dnsServerData = DNS_SERVERS.find(
-        (server) => server.key === dnsServer
-    );
+    // Get the appropriate server list based on selected protocol
+    const serverList: SERVER[] = protocol === "doh" ? DOH_SERVERS : DNS_SERVERS;
+    const dnsServerData = serverList.find((server) => server.key === dnsServer);
 
     const { data: interfaces, isLoading: isLoadingInterfaces } =
         useInterfaces();
@@ -66,9 +72,11 @@ const Main = () => {
         },
     });
     const handleSetDns = () => {
+        if (!dnsServerData) return;
         setDns({
             path: interfaceDnsInfo?.path ?? "",
-            dns_servers: dnsServerData?.servers ?? [],
+            dns_servers: dnsServerData?.servers,
+            dns_type: dnsServerData?.type,
         });
     };
     const handleClearDns = () => {
@@ -134,56 +142,58 @@ const Main = () => {
                         </SelectItem>
                     )}
                 </Select>
-                <div className="grid grid-cols-6 gap-2">
-                    <Select
-                        aira-label="Provider"
-                        className="col-span-4"
-                        aria-labelledby="Provider"
-                        items={DNS_SERVERS}
-                        selectedKeys={[dnsServer]}
-                        disallowEmptySelection={true}
-                        onSelectionChange={(keys) =>
-                            setDnsServer(keys.currentKey as string)
-                        }
-                        maxListboxHeight={200}
-                        startContent={<DNSServer className="text-2xl" />}
-                        isDisabled={!interfaceDnsInfo?.path || isActive}
-                    >
-                        {(items) => (
-                            <SelectItem key={items.key} textValue={items.name}>
-                                {items.name}
-                            </SelectItem>
-                        )}
-                    </Select>
-                    <Select
-                        aria-label="Protocol"
-                        className="col-span-2"
-                        aria-labelledby="Protocol"
-                        items={PROTOCOLS}
-                        selectedKeys={[protocol]}
-                        disallowEmptySelection={true}
-                        onSelectionChange={(keys) =>
-                            setProtocol(keys.currentKey as string)
-                        }
-                        maxListboxHeight={200}
-                    >
-                        {(items) => (
-                            <SelectItem key={items.key} textValue={items.name}>
-                                {items.name}
-                            </SelectItem>
-                        )}
-                    </Select>
-                </div>
+                <Select
+                    aira-label="Provider"
+                    className="col-span-4"
+                    aria-labelledby="Provider"
+                    items={serverList}
+                    selectedKeys={[dnsServer]}
+                    disallowEmptySelection={true}
+                    onSelectionChange={(keys) =>
+                        setDnsServer(keys.currentKey as string)
+                    }
+                    maxListboxHeight={200}
+                    startContent={<DNSServer className="text-2xl" />}
+                    isDisabled={!interfaceDnsInfo?.path || isActive}
+                >
+                    {(items) => (
+                        <SelectItem key={items.key} textValue={items.name}>
+                            {items.name}
+                        </SelectItem>
+                    )}
+                </Select>
+
+                <Tabs
+                    size="sm"
+                    classNames={{
+                        base: "w-full",
+                        tabList: "w-full",
+                    }}
+                    selectedKey={protocol}
+                    onSelectionChange={(key) => {
+                        setProtocol(key as string);
+                        // Reset to first server of the selected protocol
+                        const newServerList =
+                            key === "doh" ? DOH_SERVERS : DNS_SERVERS;
+                        setDnsServer(newServerList[0].key);
+                    }}
+                    color="primary"
+                    isDisabled={!interfaceDnsInfo?.path || isActive}
+                >
+                    {PROTOCOLS.map((protocol) => (
+                        <Tab key={protocol.key} title={protocol.name} />
+                    ))}
+                </Tabs>
 
                 <div className="flex flex-col gap-2 bg-zinc-900 rounded-md p-2 text-nowrap text-sm">
                     <div className="flex justify-between">
                         <div>Servers:</div>
                         <div>{dnsServerData?.servers.join(", ")}</div>
                     </div>
-                    <div className="flex justify-between">
+                    {/* <div className="flex justify-between">
                         <div>Tags:</div>
                         <div>{dnsServerData?.tags.join(", ")}</div>
-                    </div>
+                    </div> */}
                     <div className="flex justify-between">
                         <div>Interface:</div>
                         <div>
