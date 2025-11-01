@@ -6,7 +6,6 @@ use dns::{
 };
 use rustls::lock::Mutex;
 
-#[derive(Debug, Clone)]
 pub struct AppState {
     pub dns_server: DnsServer,
 }

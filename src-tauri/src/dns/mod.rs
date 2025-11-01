@@ -44,17 +44,15 @@ pub fn set_dns(
     dns_servers: Vec<String>,
     dns_type: String,
 ) -> Result<(), String> {
-    println!("app_state: {:?}", app_state);
     println!(
         "path: {}, dns_servers: {:?}, dns_type: {}",
         path, dns_servers, dns_type
     );
     if dns_type == "doh" {
         let mut app_state = app_state.lock().unwrap();
-        let result =
-            app_state
-                .dns_server
-                .create_dns_resolver("dns.dynx.pro".to_string(), 443, None);
+        let _result = app_state
+            .dns_server
+            .run("https://dns.dynx.pro/dns-query".to_string());
         return Err("Doh is not supported yet".to_string());
     } else {
         let result = dns_utils::apply_dns_by_path(path, dns_servers);
