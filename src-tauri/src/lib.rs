@@ -4,7 +4,7 @@ use dns::dns_server::DnsServer;
 use dns::{
     clear_dns, clear_dns_cache, get_best_interface, get_interface_dns_info, get_interfaces, set_dns,
 };
-use rustls::lock::Mutex;
+use tokio::sync::Mutex;
 
 pub struct AppState {
     pub dns_server: DnsServer,

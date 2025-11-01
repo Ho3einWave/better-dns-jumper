@@ -14,7 +14,7 @@ use tokio::net::UdpSocket;
 
 pub struct DnsServer {
     pub resolver: Option<TokioResolver>,
-    pub server: Option<ServerFuture<DnsServer>>,
+    pub server: Option<ServerFuture<DnsResolver>>,
     pub socket: Option<UdpSocket>,
 }
 
@@ -27,7 +27,7 @@ impl DnsServer {
         }
     }
 
-    pub fn run(&mut self, server: String) -> Result<(), String> {
+    pub async fn run(&mut self, server: String) -> Result<(), String> {
         let server_url =
             url::Url::parse(&server).map_err(|e| format!("Failed to parse server: {}", e))?;
 
@@ -45,20 +45,23 @@ impl DnsServer {
             return Err(resolver.err().unwrap());
         }
 
-        let socket = self.create_udp_socket();
-        if socket.is_err() {
-            return Err(socket.err().unwrap());
-        }
+        let socket = self.create_udp_socket().await?;
 
-        let mut server = ServerFuture::new(DnsServer {
-            resolver: Some(resolver.unwrap()),
-            server: None,
-            socket: None,
+        println!("created socket: {:?}", socket);
+
+        let mut server = ServerFuture::new(DnsResolver::new(resolver.unwrap()));
+
+        println!("created server");
+
+        server.register_socket(socket);
+
+        tokio::spawn(async move {
+            if let Err(_err) = server.block_until_done().await {
+                println!("Dns server stopped");
+            }
         });
 
-        server.register_socket(socket.unwrap());
-
-        self.server = Some(server);
+        println!("registered socket");
 
         Ok(())
     }
@@ -101,28 +104,44 @@ impl DnsServer {
         Ok(resolver)
     }
 
-    pub fn create_udp_socket(&self) -> Result<UdpSocket, String> {
-        let socket = UdpSocket::bind("127.0.0.1:53").await;
+    pub async fn create_udp_socket(&self) -> Result<UdpSocket, String> {
+        let socket = UdpSocket::bind("0.0.0.0:53")
+            .await
+            .map_err(|e| format!("Failed to create UDP socket: {}", e))?;
 
         Ok(socket)
     }
 
-    pub fn shutdown(&mut self) -> Result<(), String> {
+    pub async fn shutdown(&mut self) -> Result<(), String> {
         if let Some(server) = self.server.as_mut() {
-            server.shutdown_gracefully();
+            let result = server.shutdown_gracefully().await;
+            if result.is_err() {
+                return Err(result.err().unwrap().to_string());
+            }
         }
         Ok(())
     }
 }
 
+pub struct DnsResolver {
+    resolver: TokioResolver,
+}
+
+impl DnsResolver {
+    pub fn new(resolver: TokioResolver) -> Self {
+        Self { resolver }
+    }
+}
+
 #[async_trait::async_trait]
-impl RequestHandler for DnsServer {
+impl RequestHandler for DnsResolver {
     async fn handle_request<R: ResponseHandler>(
         &self,
         request: &Request,
         mut response_handle: R,
     ) -> ResponseInfo {
-        let resolver = self.resolver.as_ref().unwrap();
+        println!("handle_request");
+        let resolver = &self.resolver;
         if let Some(query) = request.queries().first() {
             let name = query.name().to_ascii();
             let record_type = query.query_type();

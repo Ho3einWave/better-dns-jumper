@@ -1,4 +1,4 @@
-use rustls::lock::Mutex;
+use tokio::sync::Mutex;
 
 use crate::AppState;
 
@@ -38,8 +38,8 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<dns_utils::Interface
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn set_dns(
-    app_state: tauri::State<Mutex<AppState>>,
+pub async fn set_dns(
+    app_state: tauri::State<'_, Mutex<AppState>>,
     path: String,
     dns_servers: Vec<String>,
     dns_type: String,
@@ -49,11 +49,12 @@ pub fn set_dns(
         path, dns_servers, dns_type
     );
     if dns_type == "doh" {
-        let mut app_state = app_state.lock().unwrap();
-        let _result = app_state
+        let mut app_state = app_state.lock().await;
+        app_state
             .dns_server
-            .run("https://dns.dynx.pro/dns-query".to_string());
-        return Err("Doh is not supported yet".to_string());
+            .run("https://doh.hoseinwave.ir/dns-query".to_string())
+            .await?;
+        return Ok(());
     } else {
         let result = dns_utils::apply_dns_by_path(path, dns_servers);
         return result;
