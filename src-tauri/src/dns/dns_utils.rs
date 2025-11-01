@@ -25,7 +25,6 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, St
                 Err(format!("No interface found"))
             } else {
                 let interface_info_wmi = result.first().cloned().unwrap_or_default();
-                dbg!(&interface_info_wmi);
                 let interface_info = match interface_info {
                     Ok(interface_info) => interface_info,
                     Err(e) => return Err(e),

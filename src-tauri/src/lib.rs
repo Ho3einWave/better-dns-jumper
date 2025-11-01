@@ -1,7 +1,15 @@
 mod dns;
+
+use dns::dns_server::DnsServer;
 use dns::{
     clear_dns, clear_dns_cache, get_best_interface, get_interface_dns_info, get_interfaces, set_dns,
 };
+use rustls::lock::Mutex;
+
+#[derive(Debug, Clone)]
+pub struct AppState {
+    pub dns_server: DnsServer,
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -15,6 +23,9 @@ pub fn run() {
             clear_dns,
             clear_dns_cache,
         ])
+        .manage(Mutex::new(AppState {
+            dns_server: DnsServer::new(),
+        }))
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
