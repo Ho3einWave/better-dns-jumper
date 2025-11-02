@@ -10,11 +10,13 @@ use hickory_server::server::{
     Request, RequestHandler, ResponseHandler, ResponseInfo, ServerFuture,
 };
 use std::net::ToSocketAddrs;
+use std::sync::Arc;
 use tokio::net::UdpSocket;
+use tokio::sync::Mutex;
 
 pub struct DnsServer {
     pub resolver: Option<TokioResolver>,
-    pub server: Option<ServerFuture<DnsResolver>>,
+    pub server: Option<Arc<Mutex<ServerFuture<DnsResolver>>>>,
     pub socket: Option<UdpSocket>,
 }
 
@@ -55,14 +57,32 @@ impl DnsServer {
 
         server.register_socket(socket);
 
+        let server = Arc::new(Mutex::new(server));
+        self.server = Some(server.clone());
+
+        let server_clone = server.clone();
         tokio::spawn(async move {
-            if let Err(_err) = server.block_until_done().await {
+            println!("Dns server blocking until done");
+            let mut server_guard = server_clone.lock().await;
+            if let Err(_err) = server_guard.block_until_done().await {
                 println!("Dns server stopped");
             }
+            println!("Dns server stopped");
         });
 
         println!("registered socket");
 
+        Ok(())
+    }
+
+    pub async fn shutdown(&mut self) -> Result<(), String> {
+        if let Some(server) = self.server.as_ref() {
+            let mut server_guard = server.lock().await;
+            let result = server_guard.shutdown_gracefully().await;
+            if result.is_err() {
+                return Err(result.err().unwrap().to_string());
+            }
+        }
         Ok(())
     }
 
@@ -105,21 +125,11 @@ impl DnsServer {
     }
 
     pub async fn create_udp_socket(&self) -> Result<UdpSocket, String> {
-        let socket = UdpSocket::bind("0.0.0.0:53")
+        let socket = UdpSocket::bind("127.0.0.2:53")
             .await
             .map_err(|e| format!("Failed to create UDP socket: {}", e))?;
 
         Ok(socket)
-    }
-
-    pub async fn shutdown(&mut self) -> Result<(), String> {
-        if let Some(server) = self.server.as_mut() {
-            let result = server.shutdown_gracefully().await;
-            if result.is_err() {
-                return Err(result.err().unwrap().to_string());
-            }
-        }
-        Ok(())
     }
 }
 
