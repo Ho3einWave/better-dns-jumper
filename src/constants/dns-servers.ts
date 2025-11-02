@@ -72,6 +72,20 @@ export const DOH_SERVERS: SERVER[] = [
         servers: ["https://cloudflare-dns.com/dns-query"],
         tags: ["Web"],
     },
+    {
+        type: "doh",
+        key: "HW_CFW",
+        name: "HW CFW DoH",
+        servers: ["https://doh.hoseinwave.ir/dns-query"],
+        tags: ["Web"],
+    },
+    {
+        type: "doh",
+        key: "HW_CFW_RAW_DOMAIN",
+        name: "HW CFW DoH RAW DOMAIN",
+        servers: ["https://doh-cf-workers.ho3einwave.workers.dev/dns-query"],
+        tags: ["Web"],
+    },
 ];
 
 export type SERVER = {

@@ -1,6 +1,7 @@
 use tokio::sync::Mutex;
 
 use crate::AppState;
+use log::{debug, error};
 
 pub mod dns_server;
 pub mod dns_utils;
@@ -44,16 +45,21 @@ pub async fn set_dns(
     dns_servers: Vec<String>,
     dns_type: String,
 ) -> Result<(), String> {
-    println!(
+    debug!(
         "path: {}, dns_servers: {:?}, dns_type: {}",
         path, dns_servers, dns_type
     );
     if dns_type == "doh" {
         let mut app_state = app_state.lock().await;
-        app_state
-            .dns_server
-            .run("https://doh.hoseinwave.ir/dns-query".to_string())
-            .await?;
+        app_state.dns_server.run(dns_servers[0].to_string()).await?;
+        let result = dns_utils::apply_dns_by_path(path, vec!["127.0.0.2".to_string()]);
+        if result.is_err() {
+            error!(
+                "Failed to apply dns by path: {}",
+                result.as_ref().err().unwrap().to_string()
+            );
+            return result;
+        }
         return Ok(());
     } else {
         let result = dns_utils::apply_dns_by_path(path, dns_servers);
@@ -62,8 +68,18 @@ pub async fn set_dns(
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn clear_dns(path: String) -> Result<(), String> {
+pub async fn clear_dns(
+    app_state: tauri::State<'_, Mutex<AppState>>,
+    path: String,
+) -> Result<(), String> {
+    debug!("getting app state");
+    let mut app_state = app_state.lock().await;
+    debug!("shutting down dns server");
+    app_state.dns_server.shutdown().await?;
+    debug!("dns server shutdown");
+    debug!("clearing dns for path: {}", path);
     let result = dns_utils::clear_dns_by_path(path);
+    debug!("dns cleared");
     return result;
 }
 

@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
-use winapi::shared::{minwindef::DWORD, winerror::ERROR_SUCCESS};
-
 use super::utils::ipv4_to_u32;
+use log::error;
+use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
+use winapi::shared::{minwindef::DWORD, winerror::ERROR_SUCCESS};
 
 use network_interface::{NetworkInterface, NetworkInterfaceConfig};
 use winapi::um::iphlpapi::GetBestInterface;
@@ -15,10 +15,8 @@ pub fn get_best_interface_idx() -> Result<u32, String> {
 
     let result = unsafe { GetBestInterface(dest_ip_u32, &mut if_index) };
 
-    if result == ERROR_SUCCESS {
-        println!("if_index: {}", if_index);
-    } else {
-        println!("error: {}", result);
+    if result != ERROR_SUCCESS {
+        error!("error: {}", result);
         return Err(format!("error: {}", result));
     }
     let interface_index: u32 = if_index.into();

@@ -9,15 +9,17 @@ use hickory_server::authority::MessageResponseBuilder;
 use hickory_server::server::{
     Request, RequestHandler, ResponseHandler, ResponseInfo, ServerFuture,
 };
+use log::{debug, error, info};
 use std::net::ToSocketAddrs;
 use std::sync::Arc;
 use tokio::net::UdpSocket;
-use tokio::sync::Mutex;
+use tokio::sync::{oneshot, Mutex};
 
 pub struct DnsServer {
     pub resolver: Option<TokioResolver>,
     pub server: Option<Arc<Mutex<ServerFuture<DnsResolver>>>>,
     pub socket: Option<UdpSocket>,
+    pub shutdown_sender: Option<oneshot::Sender<()>>,
 }
 
 impl DnsServer {
@@ -26,6 +28,7 @@ impl DnsServer {
             resolver: None,
             server: None,
             socket: None,
+            shutdown_sender: None,
         }
     }
 
@@ -35,6 +38,7 @@ impl DnsServer {
 
         let protocol = server_url.scheme();
         if protocol != "https" {
+            error!("Invalid protocol: {}", protocol);
             return Err(format!("Invalid protocol: {}", protocol));
         }
 
@@ -49,40 +53,70 @@ impl DnsServer {
 
         let socket = self.create_udp_socket().await?;
 
-        println!("created socket: {:?}", socket);
+        debug!("created socket: {:?}", socket);
 
         let mut server = ServerFuture::new(DnsResolver::new(resolver.unwrap()));
 
-        println!("created server");
+        debug!("created server");
 
         server.register_socket(socket);
 
         let server = Arc::new(Mutex::new(server));
         self.server = Some(server.clone());
 
+        let (shutdown_tx, shutdown_rx) = oneshot::channel();
+        self.shutdown_sender = Some(shutdown_tx);
+
         let server_clone = server.clone();
         tokio::spawn(async move {
-            println!("Dns server blocking until done");
-            let mut server_guard = server_clone.lock().await;
-            if let Err(_err) = server_guard.block_until_done().await {
-                println!("Dns server stopped");
+            debug!("Dns server blocking until done");
+
+            tokio::select! {
+                result = async {
+                    let mut server_guard = server_clone.lock().await;
+                    server_guard.block_until_done().await
+                } => {
+                    match result {
+                        Ok(_) => debug!("Dns server stopped (block_until_done completed)"),
+                        Err(err) => error!("Dns server stopped with error: {}", err),
+                    }
+                }
+                _ = shutdown_rx => {
+                    debug!("Dns server received shutdown signal");
+                    // Acquire lock to call shutdown_gracefully
+                    // This will wait for the lock to be released by the cancelled branch above
+                    let mut server_guard = server_clone.lock().await;
+                    if let Err(_err) = server_guard.shutdown_gracefully().await {
+                        error!("Error during graceful shutdown: {:?}", _err);
+                    }
+                    // Continue to block until done (should complete quickly after shutdown)
+                    if let Err(_err) = server_guard.block_until_done().await {
+                        error!("Dns server stopped with error");
+                    }
+                    debug!("Dns server stopped (after graceful shutdown)");
+                }
             }
-            println!("Dns server stopped");
         });
 
-        println!("registered socket");
+        debug!("registered socket");
 
         Ok(())
     }
 
     pub async fn shutdown(&mut self) -> Result<(), String> {
-        if let Some(server) = self.server.as_ref() {
-            let mut server_guard = server.lock().await;
-            let result = server_guard.shutdown_gracefully().await;
-            if result.is_err() {
-                return Err(result.err().unwrap().to_string());
+        debug!("shutting down dns server");
+        // Send shutdown signal to the spawned task instead of trying to acquire the lock
+        if let Some(shutdown_tx) = self.shutdown_sender.take() {
+            debug!("sending shutdown signal");
+            if let Err(_) = shutdown_tx.send(()) {
+                error!("shutdown signal receiver already dropped");
+            } else {
+                debug!("shutdown signal sent successfully");
             }
         }
+        // Clear the server reference after shutdown
+        self.server = None;
+        debug!("dns server shutdown successfully");
         Ok(())
     }
 
@@ -101,6 +135,8 @@ impl DnsServer {
         let socket_addr = socket_addr
             .next()
             .ok_or(format!("Failed to resolve domain: {}", &domain))?;
+
+        info!("DNS Server Resolved: {:?}", socket_addr);
 
         config.add_name_server(NameServerConfig {
             socket_addr,
