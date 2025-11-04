@@ -1,12 +1,72 @@
+use tokio::time;
+use tokio::time::{Duration, Instant};
+
 use tokio::sync::Mutex;
 
 use crate::AppState;
-use log::{debug, error};
+use log::{debug, error, info};
 
 pub mod dns_server;
 pub mod dns_utils;
 pub mod interface;
 pub mod utils;
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn test_doh_server(server: String, domain: String) -> Result<bool, String> {
+    let server_url =
+        url::Url::parse(&server).map_err(|e| format!("Failed to parse server: {}", e))?;
+
+    let protocol = server_url.scheme();
+    if protocol != "https" {
+        error!("Invalid protocol: {}", protocol);
+        return Err(format!("Invalid protocol: {}", protocol));
+    }
+
+    let resolver_domain = server_url.host().ok_or("Failed to get domain")?;
+    let port = server_url.port().unwrap_or(443);
+    let path = server_url.path();
+    let resolver = dns_server::DnsServer::create_dns_resolver(
+        resolver_domain.to_string(),
+        port,
+        Some(path.to_string()),
+    );
+    if resolver.is_err() {
+        return Err(resolver.err().unwrap());
+    }
+    let resolver = resolver.unwrap();
+    let timeout = Duration::from_secs(2);
+
+    let start = Instant::now();
+    let result = time::timeout(timeout, resolver.lookup_ip(domain.to_string())).await;
+    let elapsed = start.elapsed();
+
+    match result {
+        Ok(Ok(lookup)) => {
+            info!(
+                "DNS lookup succeeded for {} via {} in {:?}",
+                domain, server, elapsed
+            );
+            lookup.iter().for_each(|item| {
+                dbg!(&item);
+            });
+            Ok(true)
+        }
+        Ok(Err(e)) => {
+            error!(
+                "DNS lookup failed for {} via {} after {:?}: {}",
+                domain, server, elapsed, e
+            );
+            Err(format!("DNS lookup failed: {}", e))
+        }
+        Err(_) => {
+            error!(
+                "DNS lookup timed out for {} via {} after {:?}",
+                domain, server, elapsed
+            );
+            Err(format!("DNS lookup timed out after {:?}", elapsed))
+        }
+    }
+}
 
 #[tauri::command]
 pub fn get_best_interface() {

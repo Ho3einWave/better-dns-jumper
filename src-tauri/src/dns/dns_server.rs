@@ -46,7 +46,8 @@ impl DnsServer {
         let port = server_url.port().unwrap_or(443);
         let path = server_url.path();
 
-        let resolver = self.create_dns_resolver(domain.to_string(), port, Some(path.to_string()));
+        let resolver =
+            DnsServer::create_dns_resolver(domain.to_string(), port, Some(path.to_string()));
         if resolver.is_err() {
             return Err(resolver.err().unwrap());
         }
@@ -121,7 +122,6 @@ impl DnsServer {
     }
 
     pub fn create_dns_resolver(
-        &self,
         domain: String,
         port: u16,
         http_endpoint: Option<String>,

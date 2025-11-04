@@ -56,6 +56,20 @@ export const useClearDnsCache = (
     });
 };
 
+export const useTestDohServer = (
+    params?: MutationOptions<boolean, Error, { server: string; domain: string }>
+) => {
+    return useMutation({
+        mutationFn: (params: { server: string; domain: string }) => {
+            return invoke<boolean>("test_doh_server", {
+                ...params,
+                domain: "pornhub.com",
+            });
+        },
+        ...params,
+    });
+};
+
 export type InterfaceDnsInfo = {
     interface_index: number;
     dns_servers: string[];

@@ -15,6 +15,7 @@ import {
     useGetInterfaceDnsInfo,
     useClearDns,
     useClearDnsCache,
+    useTestDohServer,
 } from "../hooks/useDns";
 import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
@@ -23,6 +24,7 @@ import { addToast } from "@heroui/toast";
 import { Reset } from "../components/icons/Reset";
 import { Texture } from "../components/icons/Texture";
 import { Tab, Tabs } from "@heroui/tabs";
+import { Test } from "../components/icons/Test";
 
 const Main = () => {
     const [isActive, setIsActive] = useState(false);
@@ -50,6 +52,23 @@ const Main = () => {
             refetchInterfaceDnsInfo();
         },
     });
+
+    const { mutate: testDohServer, isPending } = useTestDohServer({
+        onSuccess: () => {
+            addToast({
+                title: "Doh server works!",
+                color: "success",
+                icon: <Test className="text-xl" />,
+            });
+        },
+        onError: (error) => {
+            addToast({
+                title: "DoH server doesn't work!",
+                color: "danger",
+                icon: <Test className="text-xl" />,
+            });
+        },
+    });
     const { mutate: clearDnsCache } = useClearDnsCache({
         onSuccess: () => {
             console.log("DNS cleared");
@@ -71,6 +90,45 @@ const Main = () => {
             });
         },
     });
+
+    const handleCopyToClipboard = async (text: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            addToast({
+                title: "Copied to clipboard",
+                color: "success",
+            });
+        } catch (error) {
+            addToast({
+                title: "Failed to copy",
+                color: "danger",
+            });
+        }
+    };
+
+    const renderDnsServers = () => {
+        if (dnsServerData?.type === "doh") {
+            return dnsServerData?.servers.map((server) => {
+                const url = new URL(server);
+                return (
+                    <Tooltip
+                        key={server}
+                        content="Click to copy"
+                        placement="top"
+                    >
+                        <div
+                            className="text-zinc-400 max-w-60 truncate cursor-pointer hover:text-white transition-colors"
+                            onClick={() => handleCopyToClipboard(server)}
+                        >
+                            {url.hostname}
+                        </div>
+                    </Tooltip>
+                );
+            });
+        } else {
+            return dnsServerData?.servers.join(", ");
+        }
+    };
     const handleSetDns = () => {
         if (!dnsServerData) return;
         setDns({
@@ -103,6 +161,13 @@ const Main = () => {
     const handleResetDns = () => {
         clearDns({
             path: interfaceDnsInfo?.path ?? "",
+        });
+    };
+
+    const handleTestDohServer = () => {
+        testDohServer({
+            server: dnsServerData?.servers[0] ?? "",
+            domain: "google.com",
         });
     };
 
@@ -187,8 +252,11 @@ const Main = () => {
 
                 <div className="flex flex-col gap-2 bg-zinc-900 rounded-md p-2 text-nowrap text-sm">
                     <div className="flex justify-between">
-                        <div>Servers:</div>
-                        <div>{dnsServerData?.servers.join(", ")}</div>
+                        <div>
+                            Server
+                            {dnsServerData?.type === "doh" ? "" : "s"}:
+                        </div>
+                        <div>{renderDnsServers()}</div>
                     </div>
                     {/* <div className="flex justify-between">
                         <div>Tags:</div>
@@ -237,7 +305,21 @@ const Main = () => {
                             <Reset className="text-xl" />
                         </Button>
                     </Tooltip>
-                    {new Array(5).fill(0).map((_, index) => (
+                    <Tooltip
+                        aria-label="Test DoH Server"
+                        content="Test DoH Server"
+                        placement="top"
+                    >
+                        <Button
+                            isIconOnly
+                            onPress={handleTestDohServer}
+                            isDisabled={dnsServerData?.type !== "doh"}
+                            isLoading={isPending}
+                        >
+                            <Test className="text-xl" />
+                        </Button>
+                    </Tooltip>
+                    {new Array(4).fill(0).map((_, index) => (
                         <Button isDisabled isIconOnly key={index}>
                             <Texture className="text-xl opacity-50" />
                         </Button>
