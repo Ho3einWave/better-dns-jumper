@@ -3,6 +3,7 @@ use tokio::time::{Duration, Instant};
 
 use tokio::sync::Mutex;
 
+use crate::types::DoHTestResult;
 use crate::AppState;
 use log::{debug, error, info};
 
@@ -12,7 +13,7 @@ pub mod interface;
 pub mod utils;
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn test_doh_server(server: String, domain: String) -> Result<bool, String> {
+pub async fn test_doh_server(server: String, domain: String) -> Result<DoHTestResult, String> {
     let server_url =
         url::Url::parse(&server).map_err(|e| format!("Failed to parse server: {}", e))?;
 
@@ -34,7 +35,7 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<bool, Str
         return Err(resolver.err().unwrap());
     }
     let resolver = resolver.unwrap();
-    let timeout = Duration::from_secs(2);
+    let timeout = Duration::from_secs(3);
 
     let start = Instant::now();
     let result = time::timeout(timeout, resolver.lookup_ip(domain.to_string())).await;
@@ -49,7 +50,11 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<bool, Str
             lookup.iter().for_each(|item| {
                 dbg!(&item);
             });
-            Ok(true)
+            Ok(DoHTestResult {
+                success: true,
+                latency: elapsed.as_millis() as usize,
+                error: None,
+            })
         }
         Ok(Err(e)) => {
             error!(
@@ -66,6 +71,13 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<bool, Str
             Err(format!("DNS lookup timed out after {:?}", elapsed))
         }
     }
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub fn change_interface_state(interface_idx: u32, enable: bool) -> Result<(), String> {
+    let path = interface::get_network_adapter_path_by_ifidx(interface_idx);
+    dbg!(&path);
+    Ok(())
 }
 
 #[tauri::command]

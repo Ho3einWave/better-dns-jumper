@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
 import { Tooltip } from "@heroui/tooltip";
@@ -16,6 +16,7 @@ import {
     useClearDns,
     useClearDnsCache,
     useTestDohServer,
+    type DoHTestResult,
 } from "../hooks/useDns";
 import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
@@ -31,6 +32,9 @@ const Main = () => {
     const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
     const [IfIdx, setIfIdx] = useState<number | null>(0);
     const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
+    const [dohTestResults, setDohTestResults] = useState<
+        Map<string, DoHTestResult | "testing" | null>
+    >(new Map());
 
     // Get the appropriate server list based on selected protocol
     const serverList: SERVER[] = protocol === "doh" ? DOH_SERVERS : DNS_SERVERS;
@@ -54,21 +58,62 @@ const Main = () => {
     });
 
     const { mutate: testDohServer, isPending } = useTestDohServer({
-        onSuccess: () => {
-            addToast({
-                title: "Doh server works!",
-                color: "success",
-                icon: <Test className="text-xl" />,
-            });
+        onSuccess: (data, variables) => {
+            // Find the server key from the server URL
+            const serverKey = DOH_SERVERS.find(
+                (s) => s.servers[0] === variables.server
+            )?.key;
+            if (serverKey) {
+                setDohTestResults((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(serverKey, data);
+                    return newMap;
+                });
+            }
         },
-        onError: () => {
-            addToast({
-                title: "DoH server doesn't work!",
-                color: "danger",
-                icon: <Test className="text-xl" />,
-            });
+        onError: (error, variables) => {
+            // Find the server key from the server URL
+            const serverKey = DOH_SERVERS.find(
+                (s) => s.servers[0] === variables.server
+            )?.key;
+            if (serverKey) {
+                setDohTestResults((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(serverKey, {
+                        success: false,
+                        latency: 0,
+                        error: error.message || "Test failed",
+                    });
+                    return newMap;
+                });
+            }
         },
     });
+
+    // Test all DoH servers when switching to DoH tab
+    useEffect(() => {
+        if (protocol === "doh") {
+            // Mark all DoH servers as testing
+            setDohTestResults((prev) => {
+                const newMap = new Map(prev);
+                DOH_SERVERS.forEach((server) => {
+                    if (!newMap.has(server.key)) {
+                        newMap.set(server.key, "testing");
+                    }
+                });
+                return newMap;
+            });
+
+            // Test all DoH servers
+            DOH_SERVERS.forEach((server) => {
+                testDohServer({
+                    server: server.servers[0],
+                    domain: "google.com",
+                });
+            });
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [protocol]);
     const { mutate: clearDnsCache } = useClearDnsCache({
         onSuccess: () => {
             console.log("DNS cleared");
@@ -221,11 +266,56 @@ const Main = () => {
                     startContent={<DNSServer className="text-2xl" />}
                     isDisabled={!interfaceDnsInfo?.path || isActive}
                 >
-                    {(items) => (
-                        <SelectItem key={items.key} textValue={items.name}>
-                            {items.name}
-                        </SelectItem>
-                    )}
+                    {serverList.map((server) => {
+                        const testResult = dohTestResults.get(server.key);
+                        const latencyText =
+                            testResult === "testing"
+                                ? "Testing..."
+                                : testResult?.success
+                                ? `${testResult.latency}ms`
+                                : testResult === null
+                                ? null
+                                : "-";
+
+                        // Determine color based on availability
+                        const getColorClass = () => {
+                            if (testResult === "testing") {
+                                return "text-yellow-400";
+                            } else if (
+                                testResult &&
+                                typeof testResult === "object" &&
+                                testResult.success
+                            ) {
+                                return "text-green-400";
+                            } else if (
+                                testResult &&
+                                typeof testResult === "object" &&
+                                !testResult.success
+                            ) {
+                                return "text-red-400";
+                            } else {
+                                return "text-zinc-400";
+                            }
+                        };
+
+                        return (
+                            <SelectItem
+                                key={server.key}
+                                textValue={server.name}
+                            >
+                                <div className="flex items-center justify-between w-full gap-2">
+                                    <span>{server.name}</span>
+                                    {protocol === "doh" && latencyText && (
+                                        <span
+                                            className={`text-[10px] ${getColorClass()}`}
+                                        >
+                                            {latencyText}
+                                        </span>
+                                    )}
+                                </div>
+                            </SelectItem>
+                        );
+                    })}
                 </Select>
 
                 <Tabs

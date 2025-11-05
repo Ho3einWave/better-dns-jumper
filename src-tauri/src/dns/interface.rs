@@ -1,3 +1,5 @@
+use crate::dns::utils::create_wmi_connection;
+
 use super::utils::ipv4_to_u32;
 use log::error;
 use serde::{Deserialize, Serialize};
@@ -70,6 +72,32 @@ pub fn get_interface_by_index(index: u32) -> Result<Interface, String> {
     } else {
         return Err(format!("interface not found"));
     }
+}
+
+pub fn get_network_adapter_path_by_ifidx(index: u32) -> Result<String, String> {
+    let wmi_connection =
+        create_wmi_connection().map_err(|e| format!("Failed to create WMI connection: {}", e))?;
+
+    let query = format!(
+        "SELECT * FROM Win32_NetworkAdapter WHERE InterfaceIndex = {}",
+        index
+    );
+
+    let result: Vec<InterfaceInfoWmi> = wmi_connection
+        .raw_query(query)
+        .map_err(|e| format!("Failed to get network adapter path: {}", e))?;
+
+    let path = result.first().cloned().unwrap_or_default().path;
+
+    Ok(path.unwrap_or_default())
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename = "Win32_NetworkAdapter")]
+#[serde(rename_all = "PascalCase")]
+pub struct InterfaceInfoWmi {
+    #[serde(rename = "__Path")]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

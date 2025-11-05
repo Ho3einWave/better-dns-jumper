@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 
 export const useInterfaces = () => {
@@ -12,6 +12,16 @@ export const useBestInterface = () => {
     return useQuery({
         queryKey: ["best_interface"],
         queryFn: () => invoke<Interface>("get_best_interface"),
+    });
+};
+
+export const useChangeInterfaceState = () => {
+    return useMutation({
+        mutationFn: (params: { interface_idx: number; enable: boolean }) =>
+            invoke<void>("change_interface_state", {
+                interface_idx: params.interface_idx,
+                enable: params.enable,
+            }),
     });
 };
 

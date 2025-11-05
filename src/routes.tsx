@@ -1,6 +1,7 @@
 import { createHashRouter } from "react-router";
 import Main from "./screens/main";
 import DefaultLayout from "./layouts/DefaultLayout";
+import NetworkInterfaces from "./screens/NetworkInterfaces";
 
 export const router = createHashRouter([
     {
@@ -13,7 +14,7 @@ export const router = createHashRouter([
             },
             {
                 path: "/network-interfaces",
-                element: <h1>Network Interfaces</h1>,
+                element: <NetworkInterfaces />,
             },
             {
                 path: "/settings",

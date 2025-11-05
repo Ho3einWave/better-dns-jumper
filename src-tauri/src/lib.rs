@@ -1,8 +1,9 @@
 mod dns;
+mod types;
 use dns::dns_server::DnsServer;
 use dns::{
-    clear_dns, clear_dns_cache, get_best_interface, get_interface_dns_info, get_interfaces,
-    set_dns, test_doh_server,
+    change_interface_state, clear_dns, clear_dns_cache, get_best_interface, get_interface_dns_info,
+    get_interfaces, set_dns, test_doh_server,
 };
 use tokio::sync::Mutex;
 
@@ -22,6 +23,7 @@ pub fn run() {
             clear_dns,
             clear_dns_cache,
             test_doh_server,
+            change_interface_state,
         ])
         .manage(Mutex::new(AppState {
             dns_server: DnsServer::new(),
