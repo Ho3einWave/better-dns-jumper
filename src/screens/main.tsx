@@ -61,7 +61,7 @@ const Main = () => {
                 icon: <Test className="text-xl" />,
             });
         },
-        onError: (error) => {
+        onError: () => {
             addToast({
                 title: "DoH server doesn't work!",
                 color: "danger",
