@@ -40,7 +40,7 @@ const NetworkInterfaces = () => {
                     {interfaces?.map((iface) => (
                         <div
                             key={iface.adapter.interface_index}
-                            className="flex items-center justify-between bg-zinc-800 rounded-md p-1 pl-4 "
+                            className="flex items-center justify-between bg-zinc-800 rounded-xl p-1 pl-2 "
                         >
                             <div className="text-xs flex items-center gap-1">
                                 <span className="text-xl">
