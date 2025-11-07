@@ -1,3 +1,5 @@
+use crate::net_interfaces::general;
+use crate::utils::create_wmi_connection;
 use serde::{Deserialize, Serialize};
 
 #[link(name = "dnsapi")]
@@ -6,9 +8,8 @@ extern "system" {
 }
 
 pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, String> {
-    let interface_info = super::interface::get_interface_by_index(interface_idx);
-    let wmi_con = super::utils::create_wmi_connection()
-        .map_err(|e| format!("WMI connection failed: {}", e))?;
+    let interface_info = general::get_interface_by_index(interface_idx);
+    let wmi_con = create_wmi_connection().map_err(|e| format!("WMI connection failed: {}", e))?;
 
     let query = format!(
         "SELECT * FROM Win32_NetworkAdapterConfiguration WHERE InterfaceIndex = {}",
@@ -32,7 +33,7 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, St
                 Ok(InterfaceDnsInfo {
                     interface_index: interface_info_wmi.interface_index,
                     dns_servers: interface_info_wmi.dns_server_search_order.clone(),
-                    interface_name: interface_info.name,
+                    interface_name: interface_info.adapter.name.unwrap_or_default(),
                     path: interface_info_wmi.path,
                 })
             }
@@ -45,8 +46,7 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, St
 
 // TODO: Change this method to use native windows api instead of wmi on windows 8+ or newer
 pub fn apply_dns_by_path(path: String, dns_servers: Vec<String>) -> Result<(), String> {
-    let wmi_con = super::utils::create_wmi_connection()
-        .map_err(|e| format!("WMI connection failed: {}", e))?;
+    let wmi_con = create_wmi_connection().map_err(|e| format!("WMI connection failed: {}", e))?;
 
     let params = SetDNSServerParams { dns_servers };
 
@@ -63,8 +63,7 @@ pub fn apply_dns_by_path(path: String, dns_servers: Vec<String>) -> Result<(), S
 }
 
 pub fn clear_dns_by_path(path: String) -> Result<(), String> {
-    let wmi_con = super::utils::create_wmi_connection()
-        .map_err(|e| format!("WMI connection failed: {}", e))?;
+    let wmi_con = create_wmi_connection().map_err(|e| format!("WMI connection failed: {}", e))?;
 
     let params = SetDNSServerParams {
         dns_servers: vec![],

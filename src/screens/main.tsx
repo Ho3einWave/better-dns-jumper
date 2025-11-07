@@ -226,7 +226,16 @@ const Main = () => {
                     aria-label="Interface"
                     aria-labelledby="Interface"
                     items={[
-                        { index: 0, name: "Auto", mac: null, addrs: [] },
+                        {
+                            adapter: {
+                                index: 0,
+                                name: "Auto",
+                                interface_index: 0,
+                                mac_address: null,
+                                addrs: [],
+                            },
+                            config: {},
+                        },
                         ...(interfaces ?? []),
                     ]}
                     isLoading={isLoadingInterfaces}
@@ -240,13 +249,16 @@ const Main = () => {
                     isDisabled={!interfaceDnsInfo?.path || isActive}
                 >
                     {(items) => (
-                        <SelectItem key={items.index} textValue={items.name}>
+                        <SelectItem
+                            key={items.adapter.interface_index}
+                            textValue={items.adapter.name ?? ""}
+                        >
                             <div className="flex gap-1 items-center ">
-                                <div>{items.name}</div>
+                                <div>{items.adapter.name}</div>
                                 <div className="text-xs text-zinc-400">
-                                    {items.index === 0
+                                    {items.adapter.interface_index === 0
                                         ? interfaceDnsInfo?.interface_name
-                                        : `#${items.index}`}
+                                        : `#${items.adapter.interface_index}`}
                                 </div>
                             </div>
                         </SelectItem>
