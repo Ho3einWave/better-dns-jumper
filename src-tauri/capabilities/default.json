@@ -6,6 +6,7 @@
     "main"
   ],
   "permissions": [
+    "store:default",
     "core:default",
     "opener:default",
     "core:window:default",

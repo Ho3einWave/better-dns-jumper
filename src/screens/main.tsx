@@ -1,13 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import ToggleButton from "../components/ToggleButton";
 import { Select, SelectItem } from "@heroui/select";
 import { Tooltip } from "@heroui/tooltip";
-import {
-    DNS_SERVERS,
-    DOH_SERVERS,
-    PROTOCOLS,
-    SERVER,
-} from "../constants/dns-servers";
 import { Button } from "@heroui/button";
 import { useInterfaces } from "../hooks/useInterfaces";
 import {
@@ -26,18 +20,40 @@ import { Reset } from "../components/icons/Reset";
 import { Texture } from "../components/icons/Texture";
 import { Tab, Tabs } from "@heroui/tabs";
 import { Test } from "../components/icons/Test";
+import { PROTOCOLS, SERVER } from "../types";
+import { useServerStore } from "../stores/useServersStore";
 
 const Main = () => {
+    const { servers, isLoading: isLoadingServers, load } = useServerStore();
+
     const [isActive, setIsActive] = useState(false);
-    const [dnsServer, setDnsServer] = useState<string>(DNS_SERVERS[0].key);
+    const [dnsServer, setDnsServer] = useState<string>("");
     const [IfIdx, setIfIdx] = useState<number | null>(0);
     const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
     const [dohTestResults, setDohTestResults] = useState<
         Map<string, DoHTestResult | "testing" | null>
     >(new Map());
 
+    // Load servers on mount
+    useEffect(() => {
+        load();
+    }, [load]);
+
     // Get the appropriate server list based on selected protocol
-    const serverList: SERVER[] = protocol === "doh" ? DOH_SERVERS : DNS_SERVERS;
+    const serverList: SERVER[] = useMemo(() => {
+        return servers.filter((server) => server.type === protocol);
+    }, [servers, protocol]);
+
+    // Set initial DNS server when servers are loaded or protocol changes
+    useEffect(() => {
+        if (!isLoadingServers && serverList.length > 0) {
+            // If current server is not in the list, or no server is selected, select the first one
+            if (!dnsServer || !serverList.find((s) => s.key === dnsServer)) {
+                setDnsServer(serverList[0].key);
+            }
+        }
+    }, [serverList, isLoadingServers, dnsServer]);
+
     const dnsServerData = serverList.find((server) => server.key === dnsServer);
 
     const { data: interfaces, isLoading: isLoadingInterfaces } =
@@ -60,7 +76,8 @@ const Main = () => {
     const { mutate: testDohServer, isPending } = useTestDohServer({
         onSuccess: (data, variables) => {
             // Find the server key from the server URL
-            const serverKey = DOH_SERVERS.find(
+            const dohServers = servers.filter((s) => s.type === "doh");
+            const serverKey = dohServers.find(
                 (s) => s.servers[0] === variables.server
             )?.key;
             if (serverKey) {
@@ -73,7 +90,8 @@ const Main = () => {
         },
         onError: (error, variables) => {
             // Find the server key from the server URL
-            const serverKey = DOH_SERVERS.find(
+            const dohServers = servers.filter((s) => s.type === "doh");
+            const serverKey = dohServers.find(
                 (s) => s.servers[0] === variables.server
             )?.key;
             if (serverKey) {
@@ -92,11 +110,13 @@ const Main = () => {
 
     // Test all DoH servers when switching to DoH tab
     useEffect(() => {
-        if (protocol === "doh") {
+        if (protocol === "doh" && !isLoadingServers) {
+            const dohServers = servers.filter((s) => s.type === "doh");
+
             // Mark all DoH servers as testing
             setDohTestResults((prev) => {
                 const newMap = new Map(prev);
-                DOH_SERVERS.forEach((server) => {
+                dohServers.forEach((server) => {
                     if (!newMap.has(server.key)) {
                         newMap.set(server.key, "testing");
                     }
@@ -105,7 +125,7 @@ const Main = () => {
             });
 
             // Test all DoH servers
-            DOH_SERVERS.forEach((server) => {
+            dohServers.forEach((server) => {
                 testDohServer({
                     server: server.servers[0],
                     domain: "google.com",
@@ -113,7 +133,7 @@ const Main = () => {
             });
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [protocol]);
+    }, [protocol, servers, isLoadingServers]);
     const { mutate: clearDnsCache } = useClearDnsCache({
         onSuccess: () => {
             console.log("DNS cleared");
@@ -269,14 +289,17 @@ const Main = () => {
                     className="col-span-4"
                     aria-labelledby="Provider"
                     items={serverList}
-                    selectedKeys={[dnsServer]}
+                    selectedKeys={dnsServer ? [dnsServer] : []}
                     disallowEmptySelection={true}
                     onSelectionChange={(keys) =>
                         setDnsServer(keys.currentKey as string)
                     }
                     maxListboxHeight={200}
                     startContent={<DNSServer className="text-2xl" />}
-                    isDisabled={!interfaceDnsInfo?.path || isActive}
+                    isDisabled={
+                        !interfaceDnsInfo?.path || isActive || isLoadingServers
+                    }
+                    isLoading={isLoadingServers}
                 >
                     {serverList.map((server) => {
                         const testResult = dohTestResults.get(server.key);
@@ -340,12 +363,17 @@ const Main = () => {
                     onSelectionChange={(key) => {
                         setProtocol(key as string);
                         // Reset to first server of the selected protocol
-                        const newServerList =
-                            key === "doh" ? DOH_SERVERS : DNS_SERVERS;
-                        setDnsServer(newServerList[0].key);
+                        const newServerList = servers.filter(
+                            (s) => s.type === key
+                        );
+                        if (newServerList.length > 0) {
+                            setDnsServer(newServerList[0].key);
+                        }
                     }}
                     color="primary"
-                    isDisabled={!interfaceDnsInfo?.path || isActive}
+                    isDisabled={
+                        !interfaceDnsInfo?.path || isActive || isLoadingServers
+                    }
                 >
                     {PROTOCOLS.map((protocol) => (
                         <Tab key={protocol.key} title={protocol.name} />

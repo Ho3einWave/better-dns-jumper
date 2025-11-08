@@ -5,6 +5,7 @@ import { Button } from "@heroui/button";
 import { getInterfaceIcon } from "../utils/interface";
 import { Connected } from "../components/icons/Connected";
 import { Disconnect } from "../components/icons/Disconnect";
+import { ScrollShadow } from "@heroui/scroll-shadow";
 
 const NetworkInterfaces = () => {
     const { data: interfaces, refetch: refetchInterfaces } = useInterfaces({
@@ -39,8 +40,8 @@ const NetworkInterfaces = () => {
     };
     return (
         <div className="flex flex-col items-center justify-center h-full">
-            <div className="absolute left-20 min-w-10/12 max-w-60 min-h-4/5 bg-zinc-900 rounded-2xl max-h-104  flex flex-col gap-2 overflow-hidden">
-                <div className=" overflow-y-auto px-2 py-2 flex flex-col gap-2">
+            <div className="absolute left-20 min-w-[87%] max-w-[87%] max-h-108 min-h-108 bg-zinc-900/50 rounded-2xl flex flex-col gap-2 overflow-hidden">
+                <ScrollShadow className=" overflow-y-auto px-2 py-2 flex flex-col gap-2 scrollbar-hide">
                     {interfaces?.map((iface) => {
                         const isDisabled =
                             iface.adapter.config_manager_error_code ===
@@ -87,7 +88,7 @@ const NetworkInterfaces = () => {
                             </div>
                         );
                     })}
-                </div>
+                </ScrollShadow>
             </div>
         </div>
     );

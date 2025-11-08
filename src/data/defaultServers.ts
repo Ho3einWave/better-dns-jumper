@@ -1,6 +1,41 @@
 import { SERVER } from "../types";
 
-export const DNS_SERVERS: SERVER[] = [
+export const DEFAULT_SERVERS: SERVER[] = [
+    {
+        type: "doh",
+        key: "DYNX",
+        name: "DynX DoH",
+        servers: ["https://dns.dynx.pro/dns-query"],
+        tags: ["Web"],
+    },
+    {
+        type: "doh",
+        key: "GOOGLE_DOH",
+        name: "Google DoH",
+        servers: ["https://dns.google/dns-query"],
+        tags: ["Web"],
+    },
+    {
+        type: "doh",
+        key: "CLOUDFLARE_DOH",
+        name: "Cloudflare DoH",
+        servers: ["https://cloudflare-dns.com/dns-query"],
+        tags: ["Web"],
+    },
+    {
+        type: "doh",
+        key: "HW_CFW_DOH",
+        name: "HW CFW DoH",
+        servers: ["https://doh.hoseinwave.ir/dns-query"],
+        tags: ["Web"],
+    },
+    {
+        type: "doh",
+        key: "HW_CFW_RAW_DOMAIN_DOH",
+        name: "HW CFW DoH RAW DOMAIN",
+        servers: ["https://doh-cf-workers.ho3einwave.workers.dev/dns-query"],
+        tags: ["Web"],
+    },
     {
         type: "dns",
         key: "GOOGLE",
@@ -48,44 +83,6 @@ export const DNS_SERVERS: SERVER[] = [
         key: "YANDEX",
         name: "Yandex DNS",
         servers: ["77.88.8.8", "77.88.8.1"],
-        tags: ["Web"],
-    },
-];
-
-export const DOH_SERVERS: SERVER[] = [
-    {
-        type: "doh",
-        key: "DYNX",
-        name: "DynX DoH",
-        servers: ["https://dns.dynx.pro/dns-query"],
-        tags: ["Web"],
-    },
-    {
-        type: "doh",
-        key: "GOOGLE",
-        name: "Google DoH",
-        servers: ["https://dns.google/dns-query"],
-        tags: ["Web"],
-    },
-    {
-        type: "doh",
-        key: "CLOUDFLARE",
-        name: "Cloudflare DoH",
-        servers: ["https://cloudflare-dns.com/dns-query"],
-        tags: ["Web"],
-    },
-    {
-        type: "doh",
-        key: "HW_CFW",
-        name: "HW CFW DoH",
-        servers: ["https://doh.hoseinwave.ir/dns-query"],
-        tags: ["Web"],
-    },
-    {
-        type: "doh",
-        key: "HW_CFW_RAW_DOMAIN",
-        name: "HW CFW DoH RAW DOMAIN",
-        servers: ["https://doh-cf-workers.ho3einwave.workers.dev/dns-query"],
         tags: ["Web"],
     },
 ];
