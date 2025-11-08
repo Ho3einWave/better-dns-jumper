@@ -48,8 +48,8 @@ const Navigation = () => {
     return (
         <div className="flex justify-center fixed top-1/2 left-4 -translate-y-1/2">
             <Tabs
-                aria-label="DNS Jumper Tabs"
-                aria-labelledby="DNS Jumper Tabs"
+                aria-label="Better DNS Jumper Tabs"
+                aria-labelledby="Better DNS Jumper Tabs"
                 size="sm"
                 color="primary"
                 radius="lg"
