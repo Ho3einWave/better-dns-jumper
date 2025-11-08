@@ -1,10 +1,16 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, UseQueryOptions } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 
-export const useInterfaces = () => {
+export const useInterfaces = (
+    options?: Omit<
+        UseQueryOptions<Interface[], Error, Interface[], readonly unknown[]>,
+        "queryKey" | "queryFn"
+    >
+) => {
     return useQuery({
         queryKey: ["interfaces"],
         queryFn: () => invoke<Interface[]>("get_interfaces"),
+        ...options,
     });
 };
 
