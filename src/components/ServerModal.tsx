@@ -55,6 +55,11 @@ const validateServers = (
         return { isValid: false, errors };
     }
 
+    if (type === "dns" && servers.length > 2) {
+        errors.push("DNS servers can only have a maximum of 2 IP addresses");
+        return { isValid: false, errors };
+    }
+
     servers.forEach((server, index) => {
         if (type === "dns") {
             if (!isValidIP(server)) {
@@ -298,7 +303,7 @@ const ServerModal = ({
                             }
                             description={
                                 formData.type === "dns"
-                                    ? "Comma-separated IP addresses"
+                                    ? "Comma-separated IP addresses (max 2)"
                                     : "HTTPS URL"
                             }
                             isInvalid={serverErrors.length > 0}

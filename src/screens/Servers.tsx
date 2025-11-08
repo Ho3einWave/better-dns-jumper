@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useServerStore } from "../stores/useServersStore";
 import { Button } from "@heroui/button";
 import ServerModal from "../components/ServerModal";
+import ConfirmModal from "../components/ConfirmModal";
 import { PROTOCOLS, type SERVER } from "../types";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
@@ -20,6 +21,7 @@ const Servers = () => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"add" | "edit">("add");
     const [editingServer, setEditingServer] = useState<SERVER | null>(null);
+    const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
 
     const filteredServers = useMemo(() => {
         if (activeTab === "all") {
@@ -33,9 +35,14 @@ const Servers = () => {
         load();
     }, []);
 
-    const handleResetServers = async () => {
+    const handleResetServers = () => {
+        setIsConfirmModalOpen(true);
+    };
+
+    const handleConfirmReset = async () => {
         await resetServers();
         load();
+        setIsConfirmModalOpen(false);
     };
 
     const handleRemoveServer = async (key: string) => {
@@ -173,6 +180,17 @@ const Servers = () => {
                 onSave={handleSaveServer}
                 server={editingServer}
                 mode={modalMode}
+            />
+
+            <ConfirmModal
+                isOpen={isConfirmModalOpen}
+                onClose={() => setIsConfirmModalOpen(false)}
+                onConfirm={handleConfirmReset}
+                title="Restore Default Servers?"
+                message="This will replace all your custom servers with the default server list. This action cannot be undone."
+                confirmText="Restore"
+                cancelText="Cancel"
+                confirmColor="danger"
             />
         </div>
     );
