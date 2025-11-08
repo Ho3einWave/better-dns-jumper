@@ -9,6 +9,7 @@ use dns::dns_server::DnsServer;
 use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns, test_doh_server};
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
 
+use tauri::Manager;
 use tokio::sync::Mutex;
 
 pub struct AppState {
@@ -18,7 +19,9 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_single_instance::init(|app, args, cwd| {}))
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            let _ = app.get_webview_window("main").unwrap().set_focus();
+        }))
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
