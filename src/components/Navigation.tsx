@@ -63,7 +63,11 @@ const Navigation = () => {
                     <Tab
                         key={tab.key}
                         title={
-                            <Tooltip aria-label={tab.title} content={tab.title}>
+                            <Tooltip
+                                aria-label={tab.title}
+                                content={tab.title}
+                                placement="right"
+                            >
                                 {tab.icon}
                             </Tooltip>
                         }
