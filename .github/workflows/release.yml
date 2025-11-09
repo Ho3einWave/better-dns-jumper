@@ -41,3 +41,4 @@ jobs:
                   releaseBody: "See the assets below to download this version."
                   releaseDraft: false
                   prerelease: false
+                  uploadPlainBinary: true
