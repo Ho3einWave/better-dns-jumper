@@ -22,12 +22,12 @@ import { Tab, Tabs } from "@heroui/tabs";
 import { Test } from "../components/icons/Test";
 import { PROTOCOLS, SERVER } from "../types";
 import { useServerStore } from "../stores/useServersStore";
+import { useDnsState } from "../stores/useDnsState";
 
 const Main = () => {
     const { servers, isLoading: isLoadingServers, load } = useServerStore();
 
-    const [isActive, setIsActive] = useState(false);
-    const [dnsServer, setDnsServer] = useState<string>("");
+    const { isActive, toggleIsActive, dnsServer, setDnsServer } = useDnsState();
     const [IfIdx, setIfIdx] = useState<number | null>(0);
     const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
     const [dohTestResults, setDohTestResults] = useState<
@@ -214,9 +214,7 @@ const Main = () => {
         } else {
             handleClearDns();
         }
-        setIsActive((prev) => {
-            return !prev;
-        });
+        toggleIsActive();
     };
 
     const handleClearDnsCache = () => {
@@ -431,7 +429,11 @@ const Main = () => {
                         content="Reset DNS"
                         placement="top"
                     >
-                        <Button isIconOnly onPress={handleResetDns}>
+                        <Button
+                            isDisabled={isActive}
+                            isIconOnly
+                            onPress={handleResetDns}
+                        >
                             <Reset className="text-xl" />
                         </Button>
                     </Tooltip>
