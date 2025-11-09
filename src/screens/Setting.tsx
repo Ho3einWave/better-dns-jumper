@@ -1,7 +1,6 @@
 import { Switch } from "@heroui/switch";
 import { useAutoStartStore } from "../stores/useAutoStartStore";
 import { useEffect } from "react";
-import { Input } from "@heroui/input";
 import TestDomain from "../components/Setting/TestDomain";
 
 const Setting = () => {
