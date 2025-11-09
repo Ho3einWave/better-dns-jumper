@@ -1,5 +1,7 @@
 import { MutationOptions, useMutation, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
+import { loadTestDomain } from "../stores/tauriSettingStore";
+import { DEFAULT_SETTING } from "../data/defaultSetting";
 
 export const useSetDns = (
     params?: MutationOptions<
@@ -64,10 +66,11 @@ export const useTestDohServer = (
     >
 ) => {
     return useMutation({
-        mutationFn: (params: { server: string; domain: string }) => {
+        mutationFn: async (params: { server: string; domain: string }) => {
+            const testDomain = await loadTestDomain();
             return invoke<DoHTestResult>("test_doh_server", {
                 ...params,
-                domain: "pornhub.com",
+                domain: testDomain || DEFAULT_SETTING.test_domain,
             });
         },
         ...params,

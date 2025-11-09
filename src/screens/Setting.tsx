@@ -1,6 +1,8 @@
 import { Switch } from "@heroui/switch";
 import { useAutoStartStore } from "../stores/useAutoStartStore";
 import { useEffect } from "react";
+import { Input } from "@heroui/input";
+import TestDomain from "../components/Setting/TestDomain";
 
 const Setting = () => {
     const { isAutoStartEnabled, isLoading, setIsAutoStartEnabled, load } =
@@ -23,7 +25,7 @@ const Setting = () => {
                     </div>
                 </div>
 
-                <div className="px-4 mt-4">
+                <div className="px-4 mt-4 flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-2">
                         <div>
                             <span>Start on system launch</span>
@@ -38,6 +40,7 @@ const Setting = () => {
                             onValueChange={handleToggleAutoStart}
                         />
                     </div>
+                    <TestDomain />
                 </div>
             </div>
         </div>
