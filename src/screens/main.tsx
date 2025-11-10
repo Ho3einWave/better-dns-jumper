@@ -22,14 +22,20 @@ import { Tab, Tabs } from "@heroui/tabs";
 import { Test } from "../components/icons/Test";
 import { PROTOCOLS, SERVER } from "../types";
 import { useServerStore } from "../stores/useServersStore";
-import { useDnsState } from "../stores/useDnsState";
+import { useDnsState } from "../hooks/useDnsState";
 
 const Main = () => {
     const { servers, isLoading: isLoadingServers, load } = useServerStore();
 
-    const { isActive, toggleIsActive, dnsServer, setDnsServer } = useDnsState();
+    const {
+        isActive,
+        toggleIsActive,
+        dnsServer,
+        setDnsServer,
+        protocol,
+        setProtocol,
+    } = useDnsState();
     const [IfIdx, setIfIdx] = useState<number | null>(0);
-    const [protocol, setProtocol] = useState<string>(PROTOCOLS[0].key);
     const [dohTestResults, setDohTestResults] = useState<
         Map<string, DoHTestResult | "testing" | null>
     >(new Map());
@@ -359,7 +365,7 @@ const Main = () => {
                     }}
                     selectedKey={protocol}
                     onSelectionChange={(key) => {
-                        setProtocol(key as string);
+                        setProtocol(key as "dns" | "doh");
                         // Reset to first server of the selected protocol
                         const newServerList = servers.filter(
                             (s) => s.type === key

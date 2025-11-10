@@ -3,13 +3,6 @@ import { SERVER } from "../types";
 export const DEFAULT_SERVERS: SERVER[] = [
     {
         type: "doh",
-        key: "DYNX",
-        name: "DynX DoH",
-        servers: ["https://dns.dynx.pro/dns-query"],
-        tags: ["Web"],
-    },
-    {
-        type: "doh",
         key: "GOOGLE_DOH",
         name: "Google DoH",
         servers: ["https://dns.google/dns-query"],
@@ -24,17 +17,24 @@ export const DEFAULT_SERVERS: SERVER[] = [
     },
     {
         type: "doh",
-        key: "HW_CFW_DOH",
-        name: "HW CFW DoH",
-        servers: ["https://doh.hoseinwave.ir/dns-query"],
-        tags: ["Web"],
+        key: "QUAD9_DOH",
+        name: "Quad9 DoH",
+        servers: ["https://dns.quad9.net/dns-query"],
+        tags: ["Security", "Privacy"],
     },
     {
         type: "doh",
-        key: "HW_CFW_RAW_DOMAIN_DOH",
-        name: "HW CFW DoH RAW DOMAIN",
-        servers: ["https://doh-cf-workers.ho3einwave.workers.dev/dns-query"],
-        tags: ["Web"],
+        key: "ADGUARD_DOH",
+        name: "AdGuard DoH",
+        servers: ["https://dns.adguard.com/dns-query"],
+        tags: ["AdBlocking", "Privacy"],
+    },
+    {
+        type: "doh",
+        key: "MULLVAD_DOH",
+        name: "Mullvad DoH",
+        servers: ["https://dns.mullvad.net/dns-query"],
+        tags: ["Privacy", "NoLogs"],
     },
     {
         type: "dns",
@@ -56,20 +56,6 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Shecan DNS",
         servers: ["178.22.122.100", "185.51.200.2"],
         tags: ["Iran", "Gaming", "Web", "Ai"],
-    },
-    {
-        type: "dns",
-        key: "US_DYN",
-        name: "DynX AdBlocker",
-        servers: ["216.146.35.35", "216.146.36.36"],
-        tags: ["Web", "Ad Blocker", "Gaming"],
-    },
-    {
-        type: "dns",
-        key: " DYNX_IRAN_ANTI_SANCTIONS",
-        name: "DynX Iran Anti Sanctions",
-        servers: ["10.70.95.150", "10.70.95.162"],
-        tags: ["Bypass", "Ad Blocker", "Gaming"],
     },
     {
         type: "dns",
