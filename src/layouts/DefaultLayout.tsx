@@ -1,6 +1,7 @@
 import { Outlet } from "react-router";
 import Titlebar from "../components/Titlebar";
 import Navigation from "../components/Navigation";
+import Updater from "../components/Updater";
 
 const DefaultLayout = () => {
     return (
@@ -10,6 +11,7 @@ const DefaultLayout = () => {
                 <Outlet />
             </div>
             <Navigation />
+            <Updater />
         </div>
     );
 };
