@@ -24,3 +24,4 @@ dist-ssr
 *.sw?
 target/rust-analyzer/flycheck0/stderr
 target/rust-analyzer/flycheck0/stdout
+.tauri/private.key

@@ -10,6 +10,7 @@
   ],
   "permissions": [
     "window-state:default",
-    "autostart:default"
+    "autostart:default",
+    "updater:default"
   ]
 }
