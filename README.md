@@ -1,218 +1,102 @@
+
 # Better DNS Jumper
 
-A modern, cross-platform DNS management tool built with Tauri (Rust + React). Easily switch between DNS servers, manage network interfaces, and use DNS-over-HTTPS (DoH) with a beautiful, intuitive interface.
+A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and use DNS-over-HTTPS (DoH) through a clean, lightweight interface.
 
 ## Features
 
-### Current Features
+* **DNS Protocols**
 
-- **Multiple DNS Protocol Support**
-  - Traditional DNS servers (IPv4)
-  - DNS-over-HTTPS (DoH) with local proxy server
+  * Traditional DNS (IPv4)
+  * DNS-over-HTTPS with local proxy
 
-- **Network Interface Management**
-  - View all network interfaces
-  - Auto-detect best network interface
-  - Set DNS servers per interface
-  - Clear DNS settings
+* **Network Management**
 
-- **DNS Server Management**
-  - Pre-configured popular DNS servers (Google, Cloudflare, Quad9, AdGuard, etc.)
-  - Custom DNS server support
-  - DoH server testing with latency measurement
-  - Server availability indicators
+  * View and select interfaces
+  * Auto-detect best interface
+  * Set / clear DNS per interface
 
-- **Additional Tools**
-  - Clear DNS cache
-  - Reset DNS settings
-  - Auto-start on system boot
-  - Automatic updates
+* **DNS Servers**
 
-- **User Interface**
-  - Modern, dark-themed UI built with React and HeroUI
-  - Smooth animations with Framer Motion
+  * Built-in popular servers (Google, Cloudflare, Quad9, AdGuard…)
+  * Custom server support
+  * DoH latency/availability testing
 
+* **Tools**
+
+  * Clear DNS cache
+  * Reset DNS settings
+  * Auto-start
+  * Auto-update
+
+* **UI**
+
+  * Modern dark UI (React + HeroUI)
+  * Smooth animations (Framer Motion)
 
 ## Installation
 
-### Prerequisites
+### Requirements
 
-- Windows 10/11 (currently Windows-only)
-- Administrator privileges (required for DNS changes)
+* Windows 10/11
+* Administrator privileges
 
 ### Download
 
-Download the latest release from the [Releases](https://github.com/Ho3einWave/better-dns-jumper/releases) page.
+Grab the latest version from the **[Releases](https://github.com/Ho3einWave/better-dns-jumper/releases)** page.
 
 ### Build from Source
 
-1. **Install Prerequisites**
-   - [Rust](https://www.rust-lang.org/tools/install) (latest stable)
-   - [Node.js](https://nodejs.org/) (v18 or later) or [Bun](https://bun.sh/)
-   - [Tauri CLI](https://tauri.app/v1/guides/getting-started/prerequisites)
-
-2. **Clone the Repository**
-   ```bash
-   git clone https://github.com/Ho3einWave/better-dns-jumper.git
-   cd better-dns-jumper
-   ```
-
-3. **Install Dependencies**
-   ```bash
-   # Using npm
-   npm install
-   
-   # Or using bun
-   bun install
-   ```
-
-4. **Run in Development Mode**
-   ```bash
-   npm run tauri dev
-   # Or
-   bun run tauri dev
-   ```
-
-5. **Build for Production**
-   ```bash
-   npm run tauri build
-   # Or
-   bun run tauri build
-   ```
+```bash
+git clone https://github.com/Ho3einWave/better-dns-jumper.git
+cd better-dns-jumper
+npm install    # or bun install
+npm run tauri dev
+npm run tauri build
+```
 
 ## Usage
 
-1. **Launch the Application**
-   - Run `better-dns-jumper.exe` (requires administrator privileges)
-   - The application will start minimized or in the system tray
+1. Launch the app (admin required)
+2. Select a network interface (or use Auto)
+3. Choose protocol: **DNS** or **DoH**
+4. Pick a server
+5. Toggle **Activate** to apply
+6. Optional tools: clear cache, reset DNS, test DoH
 
-2. **Select Network Interface**
-   - Choose "Auto" to automatically detect the best interface
-   - Or select a specific network interface from the dropdown
+## Technical Overview
 
-3. **Choose DNS Protocol**
-   - Switch between "DNS" (traditional) and "DoH" (DNS-over-HTTPS) tabs
+* **Frontend**: React + TypeScript + Tailwind + HeroUI
+* **Backend**: Rust (Tauri 2)
+* **DNS Engine**: Hickory DNS
+* **Windows Integration**: IP Helper API + WMI
+* **DoH Mode**: Runs a local DNS proxy (`127.0.0.2`) that forwards queries to the selected DoH server
 
-4. **Select DNS Server**
-   - Pick from the list of available DNS servers
-   - For DoH servers, latency is automatically tested and displayed
-
-5. **Activate DNS**
-   - Click the toggle button to apply DNS settings
-   - The interface will show the current DNS configuration
-
-6. **Additional Actions**
-   - **Clear DNS Cache**: Clears the Windows DNS resolver cache
-   - **Reset DNS**: Removes custom DNS settings and restores defaults
-   - **Test DoH Server**: Manually test a DoH server's availability
-
-## Technical Details
-
-### Architecture
-
-- **Frontend**: React 19 + TypeScript + Vite
-- **UI Framework**: HeroUI + TailwindCSS
-- **Backend**: Rust with Tauri 2.0
-- **DNS Library**: Hickory DNS (hickory-resolver, hickory-server)
-- **Network Management**: Windows API (IP Helper API) + WMI
-
-### How It Works
-
-1. **Traditional DNS**: Directly sets DNS servers on the selected network interface using Windows WMI
-2. **DoH (DNS-over-HTTPS)**: 
-   - Starts a local UDP DNS server on `127.0.0.2`
-   - Proxies DNS queries to the selected DoH server
-   - Sets the network interface to use the local proxy server
-
-### Project Structure
+Project structure:
 
 ```
-better-dns-jumper/
-├── src/                    # React frontend
-│   ├── components/        # UI components
-│   ├── screens/           # Main application screens
-│   ├── hooks/             # React hooks
-│   ├── stores/            # Zustand state management
-│   └── constants/         # Constants and configurations
-├── src-tauri/             # Rust backend
-│   ├── src/
-│   │   ├── commands/      # Tauri command handlers
-│   │   ├── dns/           # DNS server implementation
-│   │   └── net_interfaces/ # Network interface management
-│   └── Cargo.toml
-└── package.json
+src/             # React frontend
+src-tauri/       # Rust backend
 ```
 
 ## Roadmap
 
-### Planned Features
-
-- [ ] **Improve Error Handling**
-  - Better error messages and user feedback
-  - Graceful error recovery
-  - Error logging and reporting
-
-- [ ] **Clean up on Exit**
-  - Properly restore DNS settings on application exit
-  - Clean shutdown of DNS proxy server
-  - Resource cleanup
-
-- [ ] **Better Logs**
-  - Structured logging
-  - Log file rotation
-  - Log viewer in UI
-  - Debug mode
-
-- [ ] **DNS-over-TLS (DoT)**
-  - Support for DoT protocol
-  - DoT server configuration
-  - DoT server testing
-
-- [ ] **DNS-over-QUIC (DoQ)**
-  - Support for DoQ protocol
-  - DoQ server configuration
-  - DoQ server testing
-
-- [ ] **DNS-over-HTTP/3 (DoH3)**
-  - Support for HTTP/3-based DoH
-  - Improved performance over DoH
-  - HTTP/3 server testing
-
-- [ ] **Less Dependent on WMI**
-  - Migrate to native Windows API (Windows 8+)
-  - Reduce WMI dependency for better performance
-  - More reliable DNS management
-
-- [ ] **CLI Interface**
-  - Command-line interface for power users
-  - Script-friendly DNS management
-  - Integration with automation tools
-
-- [ ] **Multi-language Support**
-  - Internationalization (i18n)
-  - Multiple language packs
-  - Language switcher in settings
-
-- [ ] **Cloud Sync and Profiles**
-  - Sync DNS profiles across devices
-  - Custom profile management
-  - Profile import/export
-  - Cloud storage integration
+* Improved error handling
+* Clean exit & automatic DNS restore
+* Better logs & in-app log viewer
+* DNS-over-TLS / DNS-over-QUIC / DoH3
+* Reduce WMI usage
+* CLI support
+* Multi-language support
+* Syncable DNS profiles
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request. For major changes, please open an issue first to discuss what you would like to change.
+PRs are welcome. For major changes, open an issue first.
 
 ## License
 
-This project is licensed under the GNU General Public License v3.0 - see the [LICENSE](LICENSE) file for details.
+GPLv3 — see `LICENSE`.
 
-## Acknowledgments
 
-- Built with [Tauri](https://tauri.app/)
-- DNS functionality powered by [Hickory DNS](https://github.com/hickory-dns/hickory-dns)
-- UI components from [HeroUI](https://heroui.com/)
-
-## Support
-
-If you encounter any issues or have questions, please open an issue on [GitHub](https://github.com/Ho3einWave/better-dns-jumper/issues).
+Just tell me the style you prefer!
