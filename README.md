@@ -98,5 +98,3 @@ PRs are welcome. For major changes, open an issue first.
 
 GPLv3 — see `LICENSE`.
 
-
-Just tell me the style you prefer!
