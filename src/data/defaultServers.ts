@@ -31,10 +31,17 @@ export const DEFAULT_SERVERS: SERVER[] = [
     },
     {
         type: "doh",
-        key: "MULLVAD_DOH",
-        name: "Mullvad DoH",
-        servers: ["https://dns.mullvad.net/dns-query"],
-        tags: ["Privacy", "NoLogs"],
+        key: "DYNX_ADBLOCK",
+        name: "DynX AdBlock DoH",
+        servers: ["https://dns.dynx.pro/dns-query"],
+        tags: ["AdBlocking", "Privacy"],
+    },
+    {
+        type: "doh",
+        key: "DYNX_ANTI_BAN",
+        name: "DynX AntiBan DoH",
+        servers: ["https://dns.dynx.pro/dns-query"],
+        tags: ["Bypass", "AntiBan", "Gaming"],
     },
     {
         type: "dns",
@@ -49,6 +56,13 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Cloudflare DNS",
         servers: ["1.1.1.1", "1.0.0.1"],
         tags: ["General", "Web"],
+    },
+    {
+        type: "dns",
+        key: "DYNX_ANTI_BAN",
+        name: "DynX AntiBan DNS",
+        servers: ["10.70.95.150", "10.70.95.162"],
+        tags: ["Bypass", "AntiBan", "Gaming"],
     },
     {
         type: "dns",
