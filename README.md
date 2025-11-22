@@ -81,14 +81,14 @@ src-tauri/       # Rust backend
 
 ## Roadmap
 
-* Improved error handling
-* Clean exit & automatic DNS restore
-* Better logs & in-app log viewer
-* DNS-over-TLS / DNS-over-QUIC / DoH3
-* Reduce WMI usage
-* CLI support
-* Multi-language support
-* Syncable DNS profiles
+- [ ] Improved error handling
+- [x] Clean exit & automatic DNS restore
+- [ ] Better logs & in-app log viewer
+- [ ] DNS-over-TLS / DNS-over-QUIC / DoH3
+- [ ] Reduce WMI usage
+- [ ] CLI support
+- [ ] Multi-language support
+- [ ] Syncable DNS profiles
 
 ## Contributing
 
