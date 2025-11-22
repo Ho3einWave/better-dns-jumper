@@ -40,7 +40,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         type: "doh",
         key: "DYNX_ANTI_BAN",
         name: "DynX AntiBan DoH",
-        servers: ["https://dns.dynx.pro/dns-query"],
+        servers: ["https://anti-ban.dynx.pro/dns-query"],
         tags: ["Bypass", "AntiBan", "Gaming"],
     },
     {
