@@ -167,6 +167,10 @@ impl DnsServer {
 
         Ok(socket)
     }
+
+    pub async fn is_running(&self) -> bool {
+        self.server.is_some()
+    }
 }
 
 pub struct DnsResolver {

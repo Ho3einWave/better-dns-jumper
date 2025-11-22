@@ -42,9 +42,6 @@ pub fn get_all_interfaces() -> Result<Vec<Interface>, String> {
         .raw_query(net_adapter_config_query)
         .map_err(|e| format!("Failed to get all interfaces configuration: {}", e))?;
 
-    dbg!(&net_adapter_result);
-    dbg!(&net_adapter_config_result);
-
     let interfaces = net_adapter_result
         .iter()
         .map(|net_adapter| {
@@ -147,6 +144,8 @@ pub struct NetworkAdapterConfigurationWmi {
     pub ip_enabled: bool,
     pub ip_subnet: Option<Vec<String>>,
     pub mac_address: Option<String>,
+    #[serde(rename(deserialize = "__Path", serialize = "path"))]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

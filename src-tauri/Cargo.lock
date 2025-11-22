@@ -350,6 +350,7 @@ dependencies = [
  "async-trait",
  "clap",
  "env_logger",
+ "futures",
  "hickory-client",
  "hickory-proto",
  "hickory-resolver",

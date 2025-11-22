@@ -2,16 +2,17 @@ use std::net::Ipv4Addr;
 
 use wmi::{COMLibrary, WMIConnection};
 
+use crate::{
+    dns::dns_utils::clear_dns_by_path,
+    net_interfaces::general::{get_best_interface_idx, get_interface_by_index},
+};
+
 pub fn ipv4_to_u32(ipv4: Ipv4Addr) -> u32 {
     ipv4.into()
 }
 
 pub fn create_wmi_connection() -> Result<WMIConnection, String> {
-    // Use a more robust approach that handles COM threading issues
-    // The wmi crate should handle COM initialization internally
     let com_con = unsafe { COMLibrary::assume_initialized() };
-
-    // Create WMI connection with proper error handling
     let wmi_con = match WMIConnection::new(com_con) {
         Ok(wmi) => wmi,
         Err(e) => {
@@ -22,4 +23,13 @@ pub fn create_wmi_connection() -> Result<WMIConnection, String> {
     };
 
     Ok(wmi_con)
+}
+
+pub fn clear_dns_on_exit() -> Result<(), String> {
+    let best_interface_idx = get_best_interface_idx().unwrap();
+    let interface = get_interface_by_index(best_interface_idx).unwrap();
+    let path = interface.config.unwrap().path.unwrap();
+
+    clear_dns_by_path(path).unwrap();
+    Ok(())
 }

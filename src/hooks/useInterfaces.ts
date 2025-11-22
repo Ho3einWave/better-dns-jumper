@@ -61,5 +61,6 @@ type Interface = {
         ip_enabled: boolean;
         ip_subnet: string[] | null;
         mac_address: string | null;
+        path: string | null;
     };
 };
