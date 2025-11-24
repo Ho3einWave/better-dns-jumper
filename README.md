@@ -1,7 +1,32 @@
+![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/ho3einwave/better-dns-jumper/total?style=for-the-badge&color=blue)
+![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/ho3einwave/better-dns-jumper/release.yml?style=for-the-badge)
+![GitHub package.json dynamic](https://img.shields.io/github/package-json/version/ho3einwave/better-dns-jumper?style=for-the-badge)
+![GitHub Repo stars](https://img.shields.io/github/stars/ho3einwave/better-dns-jumper?style=for-the-badge&logo=github&color=%23f7d000)
+
 
 # Better DNS Jumper
 
 A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and use DNS-over-HTTPS (DoH) through a clean, lightweight interface.
+
+## Installation
+
+### Download
+
+Grab the latest version from the **[Releases](https://github.com/Ho3einWave/better-dns-jumper/releases)** page.
+
+
+## Related Projects
+
+### [cf-doh-worker](https://github.com/Ho3einWave/cf-doh-worker)
+
+If you are looking for a **private, custom DNS-over-HTTPS (DoH) endpoint** to use with **Better DNS Jumper**'s DoH feature, check out the `cf-doh-worker` repository.
+
+This project is a very minimalist DoH proxy designed to run on **Cloudflare Workers**. It allows you to:
+* Quickly deploy your own private, highly-available DoH server.
+* Use a DoH endpoint under your own domain to potentially bypass restrictions on known public DoH providers.
+
+You can then configure the URL of your deployed Cloudflare Worker as a custom DoH server within the **Better DNS Jumper** application.
+
 
 ## Features
 
@@ -34,16 +59,6 @@ A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS serve
   * Modern dark UI (React + HeroUI)
   * Smooth animations (Framer Motion)
 
-## Installation
-
-### Requirements
-
-* Windows 10/11
-* Administrator privileges
-
-### Download
-
-Grab the latest version from the **[Releases](https://github.com/Ho3einWave/better-dns-jumper/releases)** page.
 
 ### Build from Source
 
