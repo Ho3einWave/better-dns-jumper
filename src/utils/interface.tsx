@@ -26,3 +26,31 @@ export const getInterfaceIcon = (description: string) => {
     }
     return <Network />;
 };
+
+export enum InterfaceType {
+    Bluetooth = "bluetooth",
+    Virtual = "virtual",
+    Wifi = "wifi",
+    Vpn = "vpn",
+    Ethernet = "ethernet",
+}
+export const getInterfaceType = (description: string) => {
+    if (description.toLowerCase().includes("bluetooth")) {
+        return InterfaceType.Bluetooth;
+    } else if (description.toLowerCase().includes("virtual")) {
+        return InterfaceType.Virtual;
+    } else if (
+        description.toLowerCase().includes("wifi") ||
+        description.toLowerCase().includes("wireless") ||
+        description.toLowerCase().includes("wi-fi")
+    ) {
+        return InterfaceType.Wifi;
+    } else if (
+        description.toLowerCase().includes("vpn") ||
+        description.toLowerCase().includes("tap-windows")
+    ) {
+        return InterfaceType.Vpn;
+    } else if (description.toLowerCase().includes("ethernet")) {
+        return InterfaceType.Ethernet;
+    }
+};
