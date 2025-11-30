@@ -47,16 +47,17 @@ impl DnsServer {
         let path = server_url.path();
 
         let resolver =
-            DnsServer::create_dns_resolver(domain.to_string(), port, Some(path.to_string()));
-        if resolver.is_err() {
-            return Err(resolver.err().unwrap());
-        }
+            DnsServer::create_dns_resolver(domain.to_string(), port, Some(path.to_string()))
+                .map_err(|e| {
+                    error!("Failed to create DNS resolver: {}", e);
+                    format!("Failed to create DNS resolver: {}", e)
+                })?;
 
         let socket = self.create_udp_socket().await?;
 
         debug!("created socket: {:?}", socket);
 
-        let mut server = ServerFuture::new(DnsResolver::new(resolver.unwrap()));
+        let mut server = ServerFuture::new(DnsResolver::new(resolver));
 
         debug!("created server");
 

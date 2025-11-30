@@ -25,10 +25,14 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<DoHTestRe
         port,
         Some(path.to_string()),
     );
-    if resolver.is_err() {
-        return Err(resolver.err().unwrap());
-    }
-    let resolver = resolver.unwrap();
+
+    let resolver = match resolver {
+        Ok(resolver) => resolver,
+        Err(e) => {
+            error!("Failed to create DNS resolver: {:?}", e);
+            return Err(format!("Failed to create DNS resolver: {:?}", e));
+        }
+    };
     let timeout = Duration::from_secs(3);
 
     let start = Instant::now();
@@ -70,7 +74,8 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<DoHTestRe
 #[tauri::command(rename_all = "snake_case")]
 pub fn get_interface_dns_info(interface_idx: u32) -> Result<dns_utils::InterfaceDnsInfo, String> {
     let interface_idx = match interface_idx {
-        0 => general::get_best_interface_idx().unwrap_or(0),
+        0 => general::get_best_interface_idx()
+            .map_err(|e| format!("Failed to get best interface index: {}", e))?,
         _ => interface_idx,
     };
     let result = dns_utils::get_interface_dns_info(interface_idx);
@@ -91,14 +96,10 @@ pub async fn set_dns(
     if dns_type == "doh" {
         let mut app_state = app_state.lock().await;
         app_state.dns_server.run(dns_servers[0].to_string()).await?;
-        let result = dns_utils::apply_dns_by_path(path, vec!["127.0.0.2".to_string()]);
-        if result.is_err() {
-            error!(
-                "Failed to apply dns by path: {}",
-                result.as_ref().err().unwrap().to_string()
-            );
-            return result;
-        }
+
+        dns_utils::apply_dns_by_path(path, vec!["127.0.0.2".to_string()])
+            .map_err(|e| format!("Failed to apply dns by path: {}", e))?;
+
         return Ok(());
     } else {
         let result = dns_utils::apply_dns_by_path(path, dns_servers);

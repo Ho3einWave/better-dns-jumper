@@ -1,4 +1,5 @@
 use crate::net_interfaces::general;
+use log::error;
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn change_interface_state(interface_idx: u32, enable: bool) -> Result<(), String> {
@@ -6,10 +7,13 @@ pub fn change_interface_state(interface_idx: u32, enable: bool) -> Result<(), St
         .map_err(|e| format!("Failed to get network adapter path: {}", e))?;
 
     let result = general::change_interface_state(path, enable);
-    if result.is_err() {
-        return Err(result.err().unwrap());
+    match result {
+        Ok(_) => Ok(()),
+        Err(e) => {
+            error!("Failed to change interface state: {:?}", e);
+            Err(format!("Failed to change interface state: {}", e))
+        }
     }
-    return Ok(());
 }
 
 #[tauri::command]

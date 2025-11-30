@@ -26,7 +26,16 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
-            let _ = app.get_webview_window("main").unwrap().set_focus();
+            let main_window = app.get_webview_window("main");
+            match main_window {
+                Some(window) => {
+                    debug!("Main window found");
+                    let _ = window.set_focus();
+                }
+                None => {
+                    error!("Failed to get main window");
+                }
+            }
         }))
         .plugin(tauri_plugin_window_state::Builder::new().build())
         .plugin(tauri_plugin_opener::init())
