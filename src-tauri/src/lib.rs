@@ -5,7 +5,7 @@ mod types;
 mod utils;
 
 use dns::dns_server::DnsServer;
-use log::{debug, error};
+use log::{debug, error, info};
 
 use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns, test_doh_server};
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
@@ -22,6 +22,7 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_log::Builder::new().build())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -97,7 +98,7 @@ pub fn run() {
                 label,
                 ..
             } => {
-                println!("closing window... {}", label);
+                info!("closing window... {}", label);
             }
             _ => (),
         })
