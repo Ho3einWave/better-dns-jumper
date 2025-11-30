@@ -1,5 +1,6 @@
 use crate::net_interfaces::general;
 use crate::utils::create_wmi_connection;
+use log::debug;
 use serde::{Deserialize, Serialize};
 
 #[link(name = "dnsapi")]
@@ -85,7 +86,7 @@ pub fn clear_dns_cache() -> Result<(), String> {
     unsafe {
         let result = DnsFlushResolverCache();
 
-        println!("result: {}", result);
+        debug!("Flushed DNS cache: {}", result);
         match result {
             1 => Ok(()),
             _ => Err(format!("Failed to clear DNS cache")),

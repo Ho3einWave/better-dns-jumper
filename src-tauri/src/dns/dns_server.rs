@@ -191,13 +191,12 @@ impl RequestHandler for DnsResolver {
         request: &Request,
         mut response_handle: R,
     ) -> ResponseInfo {
-        println!("handle_request");
         let resolver = &self.resolver;
         if let Some(query) = request.queries().first() {
             let name = query.name().to_ascii();
             let record_type = query.query_type();
 
-            println!("Received query: {} {:?}", name, record_type);
+            debug!("Received query: {} {:?}", name, record_type);
 
             // Perform DNS lookup through DoH resolver and convert to Vec<Record>
             let records_result: Result<Vec<Record>, _> = match record_type {
@@ -214,7 +213,7 @@ impl RequestHandler for DnsResolver {
                     .await
                     .map(|lookup| lookup.as_lookup().record_iter().cloned().collect()),
                 _ => {
-                    println!("Unsupported record type: {:?}", record_type);
+                    error!("Unsupported record type: {:?}", record_type);
                     let response = MessageResponseBuilder::from_message_request(request);
                     let mut header = Header::response_from_request(request.header());
                     header.set_response_code(ResponseCode::NotImp);
@@ -223,7 +222,7 @@ impl RequestHandler for DnsResolver {
                         .await;
                     return match result {
                         Err(e) => {
-                            eprintln!("Error sending response: {}", e);
+                            error!("Error sending response: {}", e);
                             let mut err_header = Header::response_from_request(request.header());
                             err_header.set_response_code(ResponseCode::ServFail);
                             err_header.into()
@@ -251,7 +250,7 @@ impl RequestHandler for DnsResolver {
 
             match result {
                 Err(e) => {
-                    eprintln!("Error sending response: {}", e);
+                    error!("Error sending response: {}", e);
                     let mut err_header = Header::response_from_request(request.header());
                     err_header.set_response_code(ResponseCode::ServFail);
                     err_header.into()
@@ -269,7 +268,7 @@ impl RequestHandler for DnsResolver {
 
             match result {
                 Err(e) => {
-                    eprintln!("Error sending response: {}", e);
+                    error!("Error sending response: {}", e);
                     let mut err_header = Header::response_from_request(request.header());
                     err_header.set_response_code(ResponseCode::ServFail);
                     err_header.into()
