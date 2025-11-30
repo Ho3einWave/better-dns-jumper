@@ -1,7 +1,7 @@
 use crate::utils::create_wmi_connection;
 
 use crate::utils::ipv4_to_u32;
-use log::{debug, error};
+use log::error;
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use winapi::shared::{minwindef::DWORD, winerror::ERROR_SUCCESS};
@@ -64,10 +64,6 @@ pub fn get_interface_by_index(index: u32) -> Result<Interface, String> {
         .iter()
         .find(|interface| interface.adapter.interface_index == index);
     if let Some(interface) = interface {
-        debug!("Interface with index {} found", index);
-        debug!("Adapter: {:?}", interface.adapter);
-        debug!("Config: {:?}", interface.config);
-
         return Ok(Interface {
             adapter: interface.adapter.clone(),
             config: interface.config.clone(),
