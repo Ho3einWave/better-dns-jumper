@@ -1,7 +1,7 @@
 use crate::utils::create_wmi_connection;
 
 use crate::utils::ipv4_to_u32;
-use log::error;
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use std::net::Ipv4Addr;
 use winapi::shared::{minwindef::DWORD, winerror::ERROR_SUCCESS};
@@ -17,8 +17,8 @@ pub fn get_best_interface_idx() -> Result<u32, String> {
     let result = unsafe { GetBestInterface(dest_ip_u32, &mut if_index) };
 
     if result != ERROR_SUCCESS {
-        error!("error: {}", result);
-        return Err(format!("error: {}", result));
+        error!("Failed to get best interface index: {}", result);
+        return Err(format!("Failed to get best interface index: {}", result));
     }
     let interface_index: u32 = if_index.into();
 
@@ -64,12 +64,17 @@ pub fn get_interface_by_index(index: u32) -> Result<Interface, String> {
         .iter()
         .find(|interface| interface.adapter.interface_index == index);
     if let Some(interface) = interface {
+        debug!("Interface with index {} found", index);
+        debug!("Adapter: {:?}", interface.adapter);
+        debug!("Config: {:?}", interface.config);
+
         return Ok(Interface {
             adapter: interface.adapter.clone(),
             config: interface.config.clone(),
         });
     } else {
-        return Err(format!("interface not found"));
+        error!("Interface with index {} not found", index);
+        return Err(format!("Interface with index {} not found", index));
     }
 }
 

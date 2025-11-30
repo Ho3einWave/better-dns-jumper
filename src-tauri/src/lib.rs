@@ -5,6 +5,7 @@ mod types;
 mod utils;
 
 use dns::dns_server::DnsServer;
+use log::{debug, error};
 
 use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns, test_doh_server};
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
@@ -53,21 +54,34 @@ pub fn run() {
                     let app_state = app_handle.state::<Mutex<AppState>>();
                     let mut guard = app_state.lock().await;
                     if guard.dns_server.is_running().await {
-                        guard
-                            .dns_server
-                            .shutdown()
-                            .await
-                            .expect("error while shutting down DNS server");
-                        let result = clear_dns_on_exit();
+                        let result =
+                            guard.dns_server.shutdown().await.map_err(|e| {
+                                format!("Error while shutting down DNS server: {}", e)
+                            });
+
+                        if result.is_err() {
+                            error!("Error while shutting down DNS server: {:?}", result.err());
+                        }
+
+                        let result = clear_dns_on_exit()
+                            .map_err(|e| format!("Error while clearing DNS: {}", e));
                         let _ = tx.send(result);
                     } else {
                         let _ = tx.send(Ok(()));
                     }
                 });
 
-                futures::executor::block_on(rx)
+                let result = futures::executor::block_on(rx)
                     .expect("error waiting for cleanup channel")
-                    .expect("error while clearing DNS");
+                    .map_err(|e| format!("Error while clearing DNS: {}", e));
+                match result {
+                    Ok(_) => {
+                        debug!("DNS cleared successfully");
+                    }
+                    Err(e) => {
+                        error!("Error while clearing DNS: {}", e);
+                    }
+                }
             }
             RunEvent::WindowEvent {
                 event: WindowEvent::CloseRequested { .. },
