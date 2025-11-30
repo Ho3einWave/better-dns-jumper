@@ -6,6 +6,8 @@ mod utils;
 
 use dns::dns_server::DnsServer;
 use log::{debug, error, info};
+use std::env::temp_dir;
+use tauri_plugin_log::TargetKind;
 
 use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns, test_doh_server};
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
@@ -22,7 +24,16 @@ pub struct AppState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_log::Builder::new().build())
+        .plugin(
+            tauri_plugin_log::Builder::new()
+                .target(tauri_plugin_log::Target::new(TargetKind::Folder {
+                    path: temp_dir().join("better-dns-jumper"),
+                    file_name: Some("better-dns-jumper".to_string()),
+                }))
+                .max_file_size(1024 * 1024 * 10) // 10MB
+                .filter(|metadata| metadata.target().contains("better_dns_jumper_lib"))
+                .build(),
+        )
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())

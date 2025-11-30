@@ -3,6 +3,5 @@
 
 #[tokio::main]
 async fn main() {
-    env_logger::init();
     better_dns_jumper_lib::run()
 }
