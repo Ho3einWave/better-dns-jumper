@@ -1,5 +1,5 @@
 export type SERVER = {
-    type: "doh" | "dns";
+    type: "doh" | "dns" | "dot" | "doq" | "doh3";
     key: string;
     name: string;
     servers: string[];
@@ -14,6 +14,18 @@ export const PROTOCOLS: Protocol[] = [
     {
         key: "doh",
         name: "DoH",
+    },
+    {
+        key: "dot",
+        name: "DoT",
+    },
+    {
+        key: "doq",
+        name: "DoQ",
+    },
+    {
+        key: "doh3",
+        name: "DoH3",
     },
 ];
 

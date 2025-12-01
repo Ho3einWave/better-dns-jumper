@@ -28,20 +28,72 @@ const isValidIP = (ip: string): boolean => {
     return ipRegex.test(ip.trim());
 };
 
+// Validate domain name
+const isValidDomain = (domain: string): boolean => {
+    const domainRegex =
+        /^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/i;
+    return domainRegex.test(domain.trim());
+};
+
+// Validate hostname (domain or IP)
+const isValidHostname = (hostname: string): boolean => {
+    return isValidIP(hostname) || isValidDomain(hostname);
+};
+
+// Validate port number (1-65535)
+const isValidPort = (port: string): boolean => {
+    const portNum = parseInt(port.trim(), 10);
+    return !isNaN(portNum) && portNum >= 1 && portNum <= 65535;
+};
+
 // Validate URL (for DoH)
 const isValidURL = (url: string): boolean => {
     try {
         const parsed = new URL(url.trim());
+        console.log(parsed);
         return parsed.protocol === "https:";
     } catch {
         return false;
     }
 };
 
+// Get protocol prefix for server types
+const getProtocolPrefix = (type: "dot" | "doq" | "doh3"): string => {
+    switch (type) {
+        case "dot":
+            return "tls://";
+        case "doq":
+            return "quic://";
+        case "doh3":
+            return "h3://";
+        default:
+            return "";
+    }
+};
+
+// Strip protocol prefix from server string
+const stripProtocolPrefix = (server: string): string => {
+    return server
+        .replace(/^tls:\/\//, "")
+        .replace(/^quic:\/\//, "")
+        .replace(/^h3:\/\//, "");
+};
+
+// Validate hostname:port format (with or without protocol prefix)
+const isValidHostnamePort = (hostnamePort: string): boolean => {
+    const cleaned = stripProtocolPrefix(hostnamePort.trim());
+    const parts = cleaned.split(":");
+    if (parts.length !== 2) {
+        return false;
+    }
+    const [hostname, port] = parts;
+    return isValidHostname(hostname) && isValidPort(port);
+};
+
 // Validate servers based on type
 const validateServers = (
     servers: string[],
-    type: "dns" | "doh"
+    type: "dns" | "doh" | "dot" | "doq" | "doh3"
 ): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
@@ -60,6 +112,14 @@ const validateServers = (
         return { isValid: false, errors };
     }
 
+    if (
+        (type === "dot" || type === "doq" || type === "doh3") &&
+        servers.length > 1
+    ) {
+        errors.push(`${type.toUpperCase()} only accepts a single server`);
+        return { isValid: false, errors };
+    }
+
     servers.forEach((server, index) => {
         if (type === "dns") {
             if (!isValidIP(server)) {
@@ -68,6 +128,15 @@ const validateServers = (
         } else if (type === "doh") {
             if (!isValidURL(server)) {
                 errors.push("Not a valid HTTPS URL");
+            }
+        } else if (type === "dot" || type === "doq" || type === "doh3") {
+            // Validate with protocol prefix support
+            if (!isValidHostnamePort(server)) {
+                errors.push(
+                    `Server ${index + 1} must be in format "${getProtocolPrefix(
+                        type
+                    )}hostname:port" (hostname can be domain or IP, port 1-65535)`
+                );
             }
         }
     });
@@ -94,20 +163,26 @@ const ServerModal = ({
     mode,
 }: ServerModalProps) => {
     const [formData, setFormData] = useState<{
-        type: "dns" | "doh";
+        type: "dns" | "doh" | "dot" | "doq" | "doh3";
         key: string;
         name: string;
         servers: string;
+        hostname: string;
+        port: string;
         tags: string;
     }>({
         type: "dns",
         key: "",
         name: "",
         servers: "",
+        hostname: "",
+        port: "",
         tags: "",
     });
 
     const [serverErrors, setServerErrors] = useState<string[]>([]);
+    const [hostnameError, setHostnameError] = useState<string>("");
+    const [portError, setPortError] = useState<string>("");
 
     // Generate key from name when in add mode
     const generatedKey = useMemo(() => {
@@ -121,27 +196,57 @@ const ServerModal = ({
         if (isOpen) {
             if (mode === "edit" && server) {
                 // For DoH, only show the first server (single URL)
-                const serverValue =
-                    server.type === "doh"
-                        ? server.servers[0] || ""
-                        : server.servers.join(", ");
+                // For DoT/DoQ/DoH3, parse hostname:port format
+                let serverValue = "";
+                let hostnameValue = "";
+                let portValue = "";
+
+                if (server.type === "doh") {
+                    serverValue = server.servers[0] || "";
+                } else if (
+                    server.type === "dot" ||
+                    server.type === "doq" ||
+                    server.type === "doh3"
+                ) {
+                    if (server.servers.length > 0) {
+                        const firstServer = server.servers[0];
+                        // Strip protocol prefix before parsing
+                        const cleaned = stripProtocolPrefix(firstServer);
+                        const parts = cleaned.split(":");
+                        if (parts.length === 2) {
+                            hostnameValue = parts[0];
+                            portValue = parts[1];
+                        }
+                    }
+                } else {
+                    serverValue = server.servers.join(", ");
+                }
+
                 setFormData({
                     type: server.type,
                     key: server.key,
                     name: server.name,
                     servers: serverValue,
+                    hostname: hostnameValue,
+                    port: portValue,
                     tags: server.tags.join(", "),
                 });
                 setServerErrors([]);
+                setHostnameError("");
+                setPortError("");
             } else {
                 setFormData({
                     type: "dns",
                     key: "",
                     name: "",
                     servers: "",
+                    hostname: "",
+                    port: "",
                     tags: "",
                 });
                 setServerErrors([]);
+                setHostnameError("");
+                setPortError("");
             }
         }
     }, [isOpen, mode, server]);
@@ -177,40 +282,85 @@ const ServerModal = ({
         }
     };
 
-    const handleTypeChange = (type: "dns" | "doh") => {
-        setFormData({ ...formData, type });
+    const handleTypeChange = (type: "dns" | "doh" | "dot" | "doq" | "doh3") => {
+        setFormData({ ...formData, type, hostname: "", port: "", servers: "" });
+        setServerErrors([]);
+        setHostnameError("");
+        setPortError("");
+    };
 
-        // Re-validate servers when type changes
-        // For DoH, treat as single value; for DNS, split by comma
-        const serverList =
-            type === "doh"
-                ? formData.servers.trim()
-                    ? [formData.servers.trim()]
-                    : []
-                : formData.servers
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
-
-        if (serverList.length > 0) {
-            const validation = validateServers(serverList, type);
-            setServerErrors(validation.errors);
+    const handleHostnameChange = (value: string) => {
+        setFormData({ ...formData, hostname: value });
+        if (value.trim()) {
+            if (!isValidHostname(value)) {
+                setHostnameError("Must be a valid domain name or IP address");
+            } else {
+                setHostnameError("");
+            }
         } else {
-            setServerErrors([]);
+            setHostnameError("");
+        }
+    };
+
+    const handlePortChange = (value: string) => {
+        setFormData({ ...formData, port: value });
+        if (value.trim()) {
+            if (!isValidPort(value)) {
+                setPortError("Port must be between 1 and 65535");
+            } else {
+                setPortError("");
+            }
+        } else {
+            setPortError("");
         }
     };
 
     const handleSave = async () => {
-        // For DoH, treat as single value; for DNS, split by comma
-        const serverList =
-            formData.type === "doh"
-                ? formData.servers.trim()
-                    ? [formData.servers.trim()]
-                    : []
-                : formData.servers
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
+        let serverList: string[] = [];
+
+        // Build server list based on type
+        if (
+            formData.type === "dot" ||
+            formData.type === "doq" ||
+            formData.type === "doh3"
+        ) {
+            // For DoT/DoQ/DoH3, use hostname:port format
+            if (!formData.hostname.trim()) {
+                setHostnameError("Hostname is required");
+                return;
+            }
+            if (!formData.port.trim()) {
+                setPortError("Port is required");
+                return;
+            }
+
+            if (!isValidHostname(formData.hostname)) {
+                setHostnameError("Must be a valid domain name or IP address");
+                return;
+            }
+
+            if (!isValidPort(formData.port)) {
+                setPortError("Port must be between 1 and 65535");
+                return;
+            }
+
+            // Add server from hostname:port with protocol prefix
+            const protocolPrefix = getProtocolPrefix(formData.type);
+            serverList.push(
+                `${protocolPrefix}${formData.hostname.trim()}:${formData.port.trim()}`
+            );
+        } else if (formData.type === "doh") {
+            // For DoH, treat as single value
+            serverList = formData.servers.trim()
+                ? [formData.servers.trim()]
+                : [];
+        } else {
+            // For DNS, split by comma
+            serverList = formData.servers
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+        }
 
         // Validate before saving
         const validation = validateServers(serverList, formData.type);
@@ -271,13 +421,19 @@ const ServerModal = ({
                                 onSelectionChange={(keys) => {
                                     const selected = Array.from(keys)[0] as
                                         | "dns"
-                                        | "doh";
+                                        | "doh"
+                                        | "dot"
+                                        | "doq"
+                                        | "doh3";
                                     handleTypeChange(selected);
                                 }}
                                 size="sm"
                             >
                                 <SelectItem key="dns">DNS</SelectItem>
                                 <SelectItem key="doh">DoH</SelectItem>
+                                <SelectItem key="dot">DoT</SelectItem>
+                                <SelectItem key="doq">DoQ</SelectItem>
+                                <SelectItem key="doh3">DoH3</SelectItem>
                             </Select>
                             <Input
                                 radius="lg"
@@ -290,25 +446,55 @@ const ServerModal = ({
                                 placeholder="e.g., Google DNS"
                             />
                         </div>
-                        <Input
-                            radius="lg"
-                            label="Servers"
-                            value={formData.servers}
-                            onValueChange={handleServersChange}
-                            size="sm"
-                            placeholder={
-                                formData.type === "dns"
-                                    ? "8.8.8.8, 8.8.4.4"
-                                    : "https://dns.google/dns-query"
-                            }
-                            description={
-                                formData.type === "dns"
-                                    ? "Comma-separated IP addresses (max 2)"
-                                    : "HTTPS URL"
-                            }
-                            isInvalid={serverErrors.length > 0}
-                            errorMessage={serverErrors.join(", ")}
-                        />
+                        {formData.type === "dot" ||
+                        formData.type === "doq" ||
+                        formData.type === "doh3" ? (
+                            <div className="flex gap-2">
+                                <Input
+                                    radius="lg"
+                                    label="Hostname"
+                                    value={formData.hostname}
+                                    onValueChange={handleHostnameChange}
+                                    size="sm"
+                                    placeholder="dns.google or 8.8.8.8"
+                                    description="Domain name or IP address"
+                                    isInvalid={!!hostnameError}
+                                    errorMessage={hostnameError}
+                                />
+                                <Input
+                                    radius="lg"
+                                    label="Port"
+                                    value={formData.port}
+                                    onValueChange={handlePortChange}
+                                    size="sm"
+                                    placeholder="853"
+                                    description="1-65535"
+                                    isInvalid={!!portError}
+                                    errorMessage={portError}
+                                    type="number"
+                                />
+                            </div>
+                        ) : (
+                            <Input
+                                radius="lg"
+                                label="Servers"
+                                value={formData.servers}
+                                onValueChange={handleServersChange}
+                                size="sm"
+                                placeholder={
+                                    formData.type === "dns"
+                                        ? "8.8.8.8, 8.8.4.4"
+                                        : "https://dns.google/dns-query"
+                                }
+                                description={
+                                    formData.type === "dns"
+                                        ? "Comma-separated IP addresses (max 2)"
+                                        : "HTTPS URL"
+                                }
+                                isInvalid={serverErrors.length > 0}
+                                errorMessage={serverErrors.join(", ")}
+                            />
+                        )}
                         <Input
                             label="Tags"
                             value={formData.tags}

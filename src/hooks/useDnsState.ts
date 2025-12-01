@@ -3,8 +3,8 @@ import { create } from "zustand";
 interface DnsState {
     isActive: boolean;
     dnsServer: string;
-    protocol: "dns" | "doh";
-    setProtocol: (protocol: "dns" | "doh") => void;
+    protocol: "dns" | "doh" | "dot" | "doq" | "doh3";
+    setProtocol: (protocol: "dns" | "doh" | "dot" | "doq" | "doh3") => void;
     setIsActive: (isActive: boolean) => void;
     setDnsServer: (dnsServer: string) => void;
     toggleIsActive: () => void;

@@ -103,6 +103,9 @@ const Servers = () => {
                                 <SelectItem key="all">All</SelectItem>
                                 <SelectItem key="dns">DNS</SelectItem>
                                 <SelectItem key="doh">DoH</SelectItem>
+                                <SelectItem key="dot">DoT</SelectItem>
+                                <SelectItem key="doq">DoQ</SelectItem>
+                                <SelectItem key="doh3">DoH3</SelectItem>
                             </Select>
                         </div>
                         <Button

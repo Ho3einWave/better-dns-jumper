@@ -365,7 +365,7 @@ const Main = () => {
                     }}
                     selectedKey={protocol}
                     onSelectionChange={(key) => {
-                        setProtocol(key as "dns" | "doh");
+                        setProtocol(key as "dns" | "doh" | "dot" | "doq" | "doh3");
                         // Reset to first server of the selected protocol
                         const newServerList = servers.filter(
                             (s) => s.type === key

@@ -101,9 +101,12 @@ pub async fn set_dns(
             .map_err(|e| format!("Failed to apply dns by path: {}", e))?;
 
         return Ok(());
-    } else {
+    } else if dns_type == "dns" {
         let result = dns_utils::apply_dns_by_path(path, dns_servers);
         return result;
+    } else {
+        error!("Invalid DNS type: {}", dns_type);
+        todo!()
     }
 }
 
