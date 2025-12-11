@@ -1,4 +1,4 @@
-import antfu from '@antfu/eslint-config'
+import antfu from "@antfu/eslint-config";
 
 export default antfu({
     formatters: true,
@@ -6,13 +6,15 @@ export default antfu({
     stylistic: {
         indent: 4,
         tabWidth: 4,
+        quotes: "double",
+        semi: true,
     },
     rules: {
-        'no-console': 'off',
-        'react-hooks-extra/no-direct-set-state-in-use-effect': 'off',
+        "no-console": "off",
+        "react-hooks-extra/no-direct-set-state-in-use-effect": "off",
     },
     yaml: false,
     ignores: [
-        'src-tauri/target/**',
+        "src-tauri/**",
     ],
-})
+});
