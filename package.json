@@ -1,13 +1,15 @@
 {
     "name": "better-dns-jumper",
-    "private": true,
-    "version": "0.3.0",
     "type": "module",
+    "version": "0.3.0",
+    "private": true,
     "scripts": {
         "dev": "vite",
         "build": "tsc && vite build",
         "preview": "vite preview",
-        "tauri": "tauri"
+        "tauri": "tauri",
+        "lint": "eslint",
+        "lint:fix": "eslint --fix"
     },
     "dependencies": {
         "@heroui/button": "^2.2.27",
@@ -39,12 +41,18 @@
         "zustand": "^5.0.8"
     },
     "devDependencies": {
+        "@antfu/eslint-config": "^6.6.1",
+        "@eslint-react/eslint-plugin": "^2.3.13",
+        "@tauri-apps/cli": "^2",
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",
         "@vitejs/plugin-react": "^4.6.0",
+        "eslint": "^9.39.1",
+        "eslint-plugin-format": "^1.1.0",
+        "eslint-plugin-react-hooks": "^7.0.1",
+        "eslint-plugin-react-refresh": "^0.4.24",
         "typescript": "~5.8.3",
-        "vite": "^7.0.4",
-        "@tauri-apps/cli": "^2"
+        "vite": "^7.0.4"
     },
     "trustedDependencies": [
         "@heroui/shared-utils",
