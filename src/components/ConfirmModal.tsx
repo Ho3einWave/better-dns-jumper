@@ -1,11 +1,11 @@
+import { Button } from "@heroui/button";
 import {
     Modal,
-    ModalContent,
-    ModalHeader,
     ModalBody,
+    ModalContent,
     ModalFooter,
+    ModalHeader,
 } from "@heroui/modal";
-import { Button } from "@heroui/button";
 
 interface ConfirmModalProps {
     isOpen: boolean;
@@ -24,7 +24,7 @@ interface ConfirmModalProps {
         | "danger";
 }
 
-const ConfirmModal = ({
+function ConfirmModal({
     isOpen,
     onClose,
     onConfirm,
@@ -33,7 +33,7 @@ const ConfirmModal = ({
     confirmText = "Confirm",
     cancelText = "Cancel",
     confirmColor = "danger",
-}: ConfirmModalProps) => {
+}: ConfirmModalProps) {
     return (
         <Modal
             isOpen={isOpen}
@@ -63,6 +63,6 @@ const ConfirmModal = ({
             </ModalContent>
         </Modal>
     );
-};
+}
 
 export default ConfirmModal;

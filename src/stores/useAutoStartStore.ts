@@ -1,5 +1,5 @@
+import { disable, enable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { create } from "zustand";
-import { isEnabled, enable, disable } from "@tauri-apps/plugin-autostart";
 
 interface AutoStartStore {
     isLoading: boolean;
@@ -8,7 +8,7 @@ interface AutoStartStore {
     setIsAutoStartEnabled: (isAutoStartEnabled: boolean) => void;
 }
 
-export const useAutoStartStore = create<AutoStartStore>((set) => ({
+export const useAutoStartStore = create<AutoStartStore>(set => ({
     isLoading: true,
     isAutoStartEnabled: false,
     load: async () => {
@@ -18,7 +18,8 @@ export const useAutoStartStore = create<AutoStartStore>((set) => ({
     setIsAutoStartEnabled: async (isAutoStartEnabled) => {
         if (isAutoStartEnabled) {
             await enable();
-        } else {
+        }
+        else {
             await disable();
         }
         const newIsAutoStartEnabled = await isEnabled();

@@ -1,6 +1,6 @@
+import type { SERVER } from "../types";
 import { load } from "@tauri-apps/plugin-store";
 import { DEFAULT_SERVERS } from "../data/defaultServers";
-import { SERVER } from "../types";
 
 let storePromise: ReturnType<typeof load> | null = null;
 

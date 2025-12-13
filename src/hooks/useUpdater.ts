@@ -1,5 +1,6 @@
+import type { Update } from "@tauri-apps/plugin-updater";
+import { check } from "@tauri-apps/plugin-updater";
 import { create } from "zustand";
-import { check, Update } from "@tauri-apps/plugin-updater";
 
 interface UpdaterStore {
     isCheckingForUpdates: boolean;
@@ -38,13 +39,15 @@ export const useUpdater = create<UpdaterStore>((set, get) => ({
                 update: result,
                 isCheckingForUpdates: false,
             });
-        } else {
+        }
+        else {
             set({ isCheckingForUpdates: false, isUpdateAvailable: false });
         }
     },
     downloadUpdate: async () => {
         const { update } = get();
-        if (!update) return;
+        if (!update)
+            return;
         await update.download((event) => {
             switch (event.event) {
                 case "Started":
@@ -55,11 +58,11 @@ export const useUpdater = create<UpdaterStore>((set, get) => ({
                     });
                     break;
                 case "Progress":
-                    const downloaded = get().downloaded;
+                { const downloaded = get().downloaded;
                     set({
                         downloaded: downloaded + (event.data.chunkLength ?? 0),
                     });
-                    break;
+                    break; }
                 case "Finished":
                     set({ isDownloading: false, isReadyForInstall: true });
                     break;
@@ -68,13 +71,15 @@ export const useUpdater = create<UpdaterStore>((set, get) => ({
     },
     installUpdate: async () => {
         const { update, isReadyForInstall } = get();
-        if (!update || !isReadyForInstall) return;
+        if (!update || !isReadyForInstall)
+            return;
         await update.install();
         set({ isInstalling: true });
     },
     downloadAndInstallUpdate: async () => {
         const { update } = get();
-        if (!update) return;
+        if (!update)
+            return;
         await update.downloadAndInstall((event) => {
             switch (event.event) {
                 case "Started":
@@ -85,11 +90,11 @@ export const useUpdater = create<UpdaterStore>((set, get) => ({
                     });
                     break;
                 case "Progress":
-                    const downloaded = get().downloaded;
+                { const downloaded = get().downloaded;
                     set({
                         downloaded: downloaded + (event.data.chunkLength ?? 0),
                     });
-                    break;
+                    break; }
                 case "Finished":
                     set({ isDownloading: false, isInstalling: true });
                     break;

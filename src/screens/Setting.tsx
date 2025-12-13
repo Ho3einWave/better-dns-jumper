@@ -1,14 +1,15 @@
 import { Switch } from "@heroui/switch";
-import { useAutoStartStore } from "../stores/useAutoStartStore";
 import { useEffect } from "react";
 import TestDomain from "../components/Setting/TestDomain";
+import { useAutoStartStore } from "../stores/useAutoStartStore";
 
-const Setting = () => {
-    const { isAutoStartEnabled, isLoading, setIsAutoStartEnabled, load } =
-        useAutoStartStore();
+function Setting() {
+    const { isAutoStartEnabled, isLoading, setIsAutoStartEnabled, load }
+        = useAutoStartStore();
 
     useEffect(() => {
         load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleToggleAutoStart = async () => {
@@ -44,6 +45,6 @@ const Setting = () => {
             </div>
         </div>
     );
-};
+}
 
 export default Setting;

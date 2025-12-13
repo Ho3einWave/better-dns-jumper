@@ -1,10 +1,10 @@
+import { Button } from "@heroui/button";
 import { Input } from "@heroui/input";
 import { useEffect, useState } from "react";
 import { useTestDomain } from "../../stores/tauriSettingStore";
-import { Button } from "@heroui/button";
 import { Save } from "../icons/Save";
 
-const TestDomain = () => {
+function TestDomain() {
     const [testDomainValue, setTestDomainValue] = useState<string>("");
 
     const {
@@ -37,15 +37,15 @@ const TestDomain = () => {
                     isDisabled={isLoadingTestDomain || isSavingTestDomain}
                     size="sm"
                     value={testDomainValue}
-                    onChange={(e) => setTestDomainValue(e.target.value)}
+                    onChange={e => setTestDomainValue(e.target.value)}
                     placeholder="youtube.com"
                     className="max-w-60"
                 />
                 <Button
                     isDisabled={
-                        isLoadingTestDomain ||
-                        isSavingTestDomain ||
-                        testDomainValue === testDomain
+                        isLoadingTestDomain
+                        || isSavingTestDomain
+                        || testDomainValue === testDomain
                     }
                     size="sm"
                     isIconOnly
@@ -56,6 +56,6 @@ const TestDomain = () => {
             </div>
         </div>
     );
-};
+}
 
 export default TestDomain;

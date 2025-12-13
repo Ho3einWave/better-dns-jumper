@@ -1,8 +1,8 @@
-import { Minimize } from "./icons/Minimize";
-import { Close } from "./icons/Close";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Close } from "./icons/Close";
+import { Minimize } from "./icons/Minimize";
 
-const Titlebar = () => {
+function Titlebar() {
     const handleMinimize = () => {
         getCurrentWindow().minimize();
     };
@@ -20,11 +20,13 @@ const Titlebar = () => {
                     className="font-bold text-primary-500"
                 >
                     Better
-                </span>{" "}
+                </span>
+                {" "}
                 DNS Jumper
             </h1>
             <div className="flex gap-1">
                 <button
+                    type="button"
                     className="hover:bg-zinc-800 px-2 py-2 cursor-pointer text-zinc-500 hover:text-white"
                     onClick={handleMinimize}
                 >
@@ -32,6 +34,7 @@ const Titlebar = () => {
                 </button>
 
                 <button
+                    type="button"
                     className="hover:bg-red-500 px-2 py-2 cursor-pointer text-zinc-500 hover:text-white"
                     onClick={handleClose}
                 >
@@ -40,6 +43,6 @@ const Titlebar = () => {
             </div>
         </div>
     );
-};
+}
 
 export default Titlebar;

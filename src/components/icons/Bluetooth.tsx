@@ -16,7 +16,8 @@ export function Bluetooth(props: SVGProps<SVGSVGElement>) {
                 strokeLinejoin="round"
                 strokeWidth={2}
                 d="m7 8l10 8l-5 4V4l5 4l-10 8"
-            ></path>
+            >
+            </path>
         </svg>
     );
 }

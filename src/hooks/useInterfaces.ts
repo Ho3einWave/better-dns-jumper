@@ -1,27 +1,26 @@
-import { useMutation, useQuery, UseQueryOptions } from "@tanstack/react-query";
+import type { UseQueryOptions } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
 
-export const useInterfaces = (
-    options?: Omit<
-        UseQueryOptions<Interface[], Error, Interface[], readonly unknown[]>,
+export function useInterfaces(options?: Omit<
+    UseQueryOptions<Interface[], Error, Interface[], readonly unknown[]>,
         "queryKey" | "queryFn"
-    >
-) => {
+>) {
     return useQuery({
         queryKey: ["interfaces"],
         queryFn: () => invoke<Interface[]>("get_interfaces"),
         ...options,
     });
-};
+}
 
-export const useBestInterface = () => {
+export function useBestInterface() {
     return useQuery({
         queryKey: ["best_interface"],
         queryFn: () => invoke<Interface>("get_best_interface"),
     });
-};
+}
 
-export const useChangeInterfaceState = () => {
+export function useChangeInterfaceState() {
     return useMutation({
         mutationFn: (params: { interface_idx: number; enable: boolean }) =>
             invoke<void>("change_interface_state", {
@@ -29,9 +28,9 @@ export const useChangeInterfaceState = () => {
                 enable: params.enable,
             }),
     });
-};
+}
 
-type Interface = {
+interface Interface {
     adapter: {
         description: string | null;
         device_id: number;
@@ -63,4 +62,4 @@ type Interface = {
         mac_address: string | null;
         path: string | null;
     };
-};
+}

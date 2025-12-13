@@ -1,9 +1,9 @@
 import { Outlet } from "react-router";
-import Titlebar from "../components/Titlebar";
 import Navigation from "../components/Navigation";
+import Titlebar from "../components/Titlebar";
 import Updater from "../components/Updater";
 
-const DefaultLayout = () => {
+function DefaultLayout() {
     return (
         <div className="flex flex-col h-full">
             <Titlebar />
@@ -14,6 +14,6 @@ const DefaultLayout = () => {
             <Updater />
         </div>
     );
-};
+}
 
 export default DefaultLayout;

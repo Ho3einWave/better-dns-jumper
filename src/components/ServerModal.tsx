@@ -1,48 +1,46 @@
-import { useState, useEffect, useMemo } from "react";
+import type { SERVER } from "../types";
+import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
 import {
     Modal,
-    ModalContent,
-    ModalHeader,
     ModalBody,
+    ModalContent,
     ModalFooter,
+    ModalHeader,
 } from "@heroui/modal";
-import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
-import { Button } from "@heroui/button";
-import type { SERVER } from "../types";
+import { useEffect, useMemo, useState } from "react";
 
 // Generate key from name: convert to uppercase, replace spaces/special chars with underscores
-const generateKeyFromName = (name: string): string => {
+function generateKeyFromName(name: string): string {
     return name
         .trim()
         .toUpperCase()
         .replace(/[^A-Z0-9]/g, "_")
         .replace(/_+/g, "_")
         .replace(/^_|_$/g, "");
-};
+}
 
 // Validate IP address (IPv4)
-const isValidIP = (ip: string): boolean => {
-    const ipRegex =
-        /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+function isValidIP(ip: string): boolean {
+    const ipRegex
+        = /^(?:(?:25[0-5]|2[0-4]\d|[01]?\d{1,2})\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d{1,2})$/;
     return ipRegex.test(ip.trim());
-};
+}
 
 // Validate URL (for DoH)
-const isValidURL = (url: string): boolean => {
+function isValidURL(url: string): boolean {
     try {
         const parsed = new URL(url.trim());
         return parsed.protocol === "https:";
-    } catch {
+    }
+    catch {
         return false;
     }
-};
+}
 
 // Validate servers based on type
-const validateServers = (
-    servers: string[],
-    type: "dns" | "doh"
-): { isValid: boolean; errors: string[] } => {
+function validateServers(servers: string[], type: "dns" | "doh"): { isValid: boolean; errors: string[] } {
     const errors: string[] = [];
 
     if (servers.length === 0) {
@@ -65,7 +63,8 @@ const validateServers = (
             if (!isValidIP(server)) {
                 errors.push(`Server ${index + 1} is not a valid IP address`);
             }
-        } else if (type === "doh") {
+        }
+        else if (type === "doh") {
             if (!isValidURL(server)) {
                 errors.push("Not a valid HTTPS URL");
             }
@@ -76,7 +75,7 @@ const validateServers = (
         isValid: errors.length === 0,
         errors,
     };
-};
+}
 
 interface ServerModalProps {
     isOpen: boolean;
@@ -86,13 +85,13 @@ interface ServerModalProps {
     mode: "add" | "edit";
 }
 
-const ServerModal = ({
+function ServerModal({
     isOpen,
     onClose,
     onSave,
     server,
     mode,
-}: ServerModalProps) => {
+}: ServerModalProps) {
     const [formData, setFormData] = useState<{
         type: "dns" | "doh";
         key: string;
@@ -121,8 +120,8 @@ const ServerModal = ({
         if (isOpen) {
             if (mode === "edit" && server) {
                 // For DoH, only show the first server (single URL)
-                const serverValue =
-                    server.type === "doh"
+                const serverValue
+                    = server.type === "doh"
                         ? server.servers[0] || ""
                         : server.servers.join(", ");
                 setFormData({
@@ -133,7 +132,8 @@ const ServerModal = ({
                     tags: server.tags.join(", "),
                 });
                 setServerErrors([]);
-            } else {
+            }
+            else {
                 setFormData({
                     type: "dns",
                     key: "",
@@ -150,7 +150,7 @@ const ServerModal = ({
     useEffect(() => {
         if (mode === "add" && formData.name.trim()) {
             const newKey = generateKeyFromName(formData.name);
-            setFormData((prev) => ({ ...prev, key: newKey }));
+            setFormData(prev => ({ ...prev, key: newKey }));
         }
     }, [formData.name, mode]);
 
@@ -159,20 +159,21 @@ const ServerModal = ({
 
         // Validate servers in real-time
         // For DoH, treat as single value; for DNS, split by comma
-        const serverList =
-            formData.type === "doh"
+        const serverList
+            = formData.type === "doh"
                 ? value.trim()
                     ? [value.trim()]
                     : []
                 : value
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(s => s.length > 0);
 
         if (serverList.length > 0) {
             const validation = validateServers(serverList, formData.type);
             setServerErrors(validation.errors);
-        } else {
+        }
+        else {
             setServerErrors([]);
         }
     };
@@ -182,35 +183,36 @@ const ServerModal = ({
 
         // Re-validate servers when type changes
         // For DoH, treat as single value; for DNS, split by comma
-        const serverList =
-            type === "doh"
+        const serverList
+            = type === "doh"
                 ? formData.servers.trim()
                     ? [formData.servers.trim()]
                     : []
                 : formData.servers
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(s => s.length > 0);
 
         if (serverList.length > 0) {
             const validation = validateServers(serverList, type);
             setServerErrors(validation.errors);
-        } else {
+        }
+        else {
             setServerErrors([]);
         }
     };
 
     const handleSave = async () => {
         // For DoH, treat as single value; for DNS, split by comma
-        const serverList =
-            formData.type === "doh"
+        const serverList
+            = formData.type === "doh"
                 ? formData.servers.trim()
                     ? [formData.servers.trim()]
                     : []
                 : formData.servers
-                      .split(",")
-                      .map((s) => s.trim())
-                      .filter((s) => s.length > 0);
+                        .split(",")
+                        .map(s => s.trim())
+                        .filter(s => s.length > 0);
 
         // Validate before saving
         const validation = validateServers(serverList, formData.type);
@@ -228,14 +230,14 @@ const ServerModal = ({
             servers: serverList,
             tags: formData.tags
                 .split(",")
-                .map((t) => t.trim())
-                .filter((t) => t.length > 0),
+                .map(t => t.trim())
+                .filter(t => t.length > 0),
         };
 
         if (
-            !serverData.key ||
-            !serverData.name ||
-            serverData.servers.length === 0
+            !serverData.key
+            || !serverData.name
+            || serverData.servers.length === 0
         ) {
             return;
         }
@@ -283,9 +285,8 @@ const ServerModal = ({
                                 radius="lg"
                                 label="Name"
                                 value={formData.name}
-                                onValueChange={(value) =>
-                                    setFormData({ ...formData, name: value })
-                                }
+                                onValueChange={value =>
+                                    setFormData({ ...formData, name: value })}
                                 size="sm"
                                 placeholder="e.g., Google DNS"
                             />
@@ -312,9 +313,8 @@ const ServerModal = ({
                         <Input
                             label="Tags"
                             value={formData.tags}
-                            onValueChange={(value) =>
-                                setFormData({ ...formData, tags: value })
-                            }
+                            onValueChange={value =>
+                                setFormData({ ...formData, tags: value })}
                             size="sm"
                             placeholder="Web, Gaming"
                             description="Comma-separated list"
@@ -332,6 +332,6 @@ const ServerModal = ({
             </ModalContent>
         </Modal>
     );
-};
+}
 
 export default ServerModal;

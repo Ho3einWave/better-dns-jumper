@@ -3,7 +3,6 @@
 ![GitHub package.json dynamic](https://img.shields.io/github/package-json/version/ho3einwave/better-dns-jumper?style=for-the-badge)
 ![GitHub Repo stars](https://img.shields.io/github/stars/ho3einwave/better-dns-jumper?style=for-the-badge&logo=github&color=%23f7d000)
 
-
 # Better DNS Jumper
 
 A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and use DNS-over-HTTPS (DoH) through a clean, lightweight interface.
@@ -14,7 +13,6 @@ A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS serve
 
 Grab the latest version from the **[Releases](https://github.com/Ho3einWave/better-dns-jumper/releases)** page.
 
-
 ## Related Projects
 
 ### [cf-doh-worker](https://github.com/Ho3einWave/cf-doh-worker)
@@ -22,43 +20,37 @@ Grab the latest version from the **[Releases](https://github.com/Ho3einWave/bett
 If you are looking for a **private, custom DNS-over-HTTPS (DoH) endpoint** to use with **Better DNS Jumper**'s DoH feature, check out the `cf-doh-worker` repository.
 
 This project is a very minimalist DoH proxy designed to run on **Cloudflare Workers**. It allows you to:
-* Quickly deploy your own private, highly-available DoH server.
-* Use a DoH endpoint under your own domain to potentially bypass restrictions on known public DoH providers.
+
+- Quickly deploy your own private, highly-available DoH server.
+- Use a DoH endpoint under your own domain to potentially bypass restrictions on known public DoH providers.
 
 You can then configure the URL of your deployed Cloudflare Worker as a custom DoH server within the **Better DNS Jumper** application.
 
-
 ## Features
 
-* **DNS Protocols**
+- **DNS Protocols**
+    - Traditional DNS (IPv4)
+    - DNS-over-HTTPS with local proxy
 
-  * Traditional DNS (IPv4)
-  * DNS-over-HTTPS with local proxy
+- **Network Management**
+    - View and select interfaces
+    - Auto-detect best interface
+    - Set / clear DNS per interface
 
-* **Network Management**
+- **DNS Servers**
+    - Built-in popular servers (Google, Cloudflare, Quad9, AdGuard…)
+    - Custom server support
+    - DoH latency/availability testing
 
-  * View and select interfaces
-  * Auto-detect best interface
-  * Set / clear DNS per interface
+- **Tools**
+    - Clear DNS cache
+    - Reset DNS settings
+    - Auto-start
+    - Auto-update
 
-* **DNS Servers**
-
-  * Built-in popular servers (Google, Cloudflare, Quad9, AdGuard…)
-  * Custom server support
-  * DoH latency/availability testing
-
-* **Tools**
-
-  * Clear DNS cache
-  * Reset DNS settings
-  * Auto-start
-  * Auto-update
-
-* **UI**
-
-  * Modern dark UI (React + HeroUI)
-  * Smooth animations (Framer Motion)
-
+- **UI**
+    - Modern dark UI (React + HeroUI)
+    - Smooth animations (Framer Motion)
 
 ### Build from Source
 
@@ -81,11 +73,11 @@ npm run tauri build
 
 ## Technical Overview
 
-* **Frontend**: React + TypeScript + Tailwind + HeroUI
-* **Backend**: Rust (Tauri 2)
-* **DNS Engine**: Hickory DNS
-* **Windows Integration**: IP Helper API + WMI
-* **DoH Mode**: Runs a local DNS proxy (`127.0.0.2`) that forwards queries to the selected DoH server
+- **Frontend**: React + TypeScript + Tailwind + HeroUI
+- **Backend**: Rust (Tauri 2)
+- **DNS Engine**: Hickory DNS
+- **Windows Integration**: IP Helper API + WMI
+- **DoH Mode**: Runs a local DNS proxy (`127.0.0.2`) that forwards queries to the selected DoH server
 
 Project structure:
 
@@ -112,4 +104,3 @@ PRs are welcome. For major changes, open an issue first.
 ## License
 
 GPLv3 — see `LICENSE`.
-
