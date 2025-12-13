@@ -10,12 +10,12 @@ interface DnsState {
     toggleIsActive: () => void;
 }
 
-export const useDnsState = create<DnsState>((set) => ({
+export const useDnsState = create<DnsState>(set => ({
     isActive: false,
     dnsServer: "",
     protocol: "dns",
-    setProtocol: (protocol) => set({ protocol }),
-    setIsActive: (isActive) => set({ isActive }),
-    setDnsServer: (dnsServer) => set({ dnsServer }),
-    toggleIsActive: () => set((state) => ({ isActive: !state.isActive })),
+    setProtocol: protocol => set({ protocol }),
+    setIsActive: isActive => set({ isActive }),
+    setDnsServer: dnsServer => set({ dnsServer }),
+    toggleIsActive: () => set(state => ({ isActive: !state.isActive })),
 }));

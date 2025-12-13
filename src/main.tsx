@@ -1,10 +1,10 @@
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "./styles/main.css";
-import { router } from "./routes";
 import { RouterProvider } from "react-router";
 import Providers from "./providers";
-import { getCurrentWindow } from "@tauri-apps/api/window";
+import { router } from "./routes";
+import "./styles/main.css";
 
 getCurrentWindow().setDecorations(false);
 
@@ -13,5 +13,5 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         <Providers>
             <RouterProvider router={router} />
         </Providers>
-    </React.StrictMode>
+    </React.StrictMode>,
 );

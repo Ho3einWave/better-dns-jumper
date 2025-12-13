@@ -1,4 +1,4 @@
-import { SERVER } from "../types";
+import type { SERVER } from "../types";
 
 export const DEFAULT_SERVERS: SERVER[] = [
     {

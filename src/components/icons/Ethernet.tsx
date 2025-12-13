@@ -21,17 +21,20 @@ export function Ethernet(props: SVGProps<SVGSVGElement>) {
                             stroke="#fff"
                             strokeLinejoin="round"
                             rx={3}
-                        ></rect>
+                        >
+                        </rect>
                         <path
                             fill="#000"
                             stroke="#000"
                             strokeLinejoin="round"
                             d="M19 27h10v6H19zm-5-8h20v8H14z"
-                        ></path>
+                        >
+                        </path>
                         <path
                             stroke="#000"
                             d="M33 19v-4m-6 4v-4m-6 4v-4m-6 4v-4"
-                        ></path>
+                        >
+                        </path>
                     </g>
                 </mask>
             </defs>
@@ -39,7 +42,8 @@ export function Ethernet(props: SVGProps<SVGSVGElement>) {
                 fill="currentColor"
                 d="M0 0h48v48H0z"
                 mask="url(#SVGtDqkQbSn)"
-            ></path>
+            >
+            </path>
         </svg>
     );
 }

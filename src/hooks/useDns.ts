@@ -1,15 +1,14 @@
-import { MutationOptions, useMutation, useQuery } from "@tanstack/react-query";
+import type { MutationOptions } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { invoke } from "@tauri-apps/api/core";
-import { loadTestDomain } from "../stores/tauriSettingStore";
 import { DEFAULT_SETTING } from "../data/defaultSetting";
+import { loadTestDomain } from "../stores/tauriSettingStore";
 
-export const useSetDns = (
-    params?: MutationOptions<
-        void,
-        Error,
-        { path: string; dns_servers: string[]; dns_type: "doh" | "dns" }
-    >
-) => {
+export function useSetDns(params?: MutationOptions<
+    void,
+    Error,
+    { path: string; dns_servers: string[]; dns_type: "doh" | "dns" }
+>) {
     return useMutation({
         mutationFn: (params: {
             path: string;
@@ -20,11 +19,9 @@ export const useSetDns = (
         },
         ...params,
     });
-};
+}
 
-export const useClearDns = (
-    params?: MutationOptions<void, Error, { path: string }>
-) => {
+export function useClearDns(params?: MutationOptions<void, Error, { path: string }>) {
     return useMutation({
         mutationFn: (params: { path: string }) => {
             return invoke<void>("clear_dns", params);
@@ -32,9 +29,9 @@ export const useClearDns = (
 
         ...params,
     });
-};
+}
 
-export const useGetInterfaceDnsInfo = (interface_idx: number | null) => {
+export function useGetInterfaceDnsInfo(interface_idx: number | null) {
     return useQuery({
         queryKey: ["interface_info", interface_idx],
         queryFn: () => {
@@ -45,26 +42,22 @@ export const useGetInterfaceDnsInfo = (interface_idx: number | null) => {
         refetchInterval: 10000,
         enabled: interface_idx !== null,
     });
-};
+}
 
-export const useClearDnsCache = (
-    params?: MutationOptions<void, Error, void>
-) => {
+export function useClearDnsCache(params?: MutationOptions<void, Error, void>) {
     return useMutation({
         mutationFn: () => {
             return invoke<void>("clear_dns_cache");
         },
         ...params,
     });
-};
+}
 
-export const useTestDohServer = (
-    params?: MutationOptions<
-        DoHTestResult,
-        Error,
-        { server: string; domain: string }
-    >
-) => {
+export function useTestDohServer(params?: MutationOptions<
+    DoHTestResult,
+    Error,
+    { server: string; domain: string }
+>) {
     return useMutation({
         mutationFn: async (params: { server: string; domain: string }) => {
             const testDomain = await loadTestDomain();
@@ -75,17 +68,17 @@ export const useTestDohServer = (
         },
         ...params,
     });
-};
+}
 
-export type DoHTestResult = {
+export interface DoHTestResult {
     success: boolean;
     latency: number;
     error: string | null;
-};
+}
 
-export type InterfaceDnsInfo = {
+export interface InterfaceDnsInfo {
     interface_index: number;
     dns_servers: string[];
     interface_name: string;
     path: string | null;
-};
+}

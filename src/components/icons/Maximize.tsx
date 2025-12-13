@@ -12,7 +12,8 @@ export function Maximize(props: SVGProps<SVGSVGElement>) {
             <path
                 fill="currentColor"
                 d="M16 20v-9H4v9zm2-5v-2h2V4H8v5H6V4q0-.825.588-1.412T8 2h12q.825 0 1.413.588T22 4v9q0 .825-.587 1.413T20 15zM4 22q-.825 0-1.412-.587T2 20v-9q0-.825.588-1.412T4 9h12q.825 0 1.413.588T18 11v9q0 .825-.587 1.413T16 22zm6-6.5"
-            ></path>
+            >
+            </path>
         </svg>
     );
 }

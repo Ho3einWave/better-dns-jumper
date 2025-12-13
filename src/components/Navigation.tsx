@@ -1,13 +1,14 @@
-import { Tabs, Tab } from "@heroui/tabs";
+import type { Key } from "react";
+import { Tab, Tabs } from "@heroui/tabs";
 import { Tooltip } from "@heroui/tooltip";
+import { useEffect, useState } from "react";
+import { useLocation, useNavigate } from "react-router";
 import { DNSServer } from "../components/icons/DNSServer";
-import { Setting } from "../components/icons/Setting";
-import { Key, useState, useEffect } from "react";
-import { useNavigate, useLocation } from "react-router";
 import { Lan } from "../components/icons/Lan";
+import { Setting } from "../components/icons/Setting";
+import { useUpdater } from "../hooks/useUpdater";
 import { Server } from "./icons/Server";
 import { Update } from "./icons/Update";
-import { useUpdater } from "../hooks/useUpdater";
 
 const TABS = [
     {
@@ -38,7 +39,7 @@ const TABS = [
 
 type TabKey = (typeof TABS)[number]["key"];
 
-const Navigation = () => {
+function Navigation() {
     const navigate = useNavigate();
     const location = useLocation();
     const { isUpdateAvailable, openModal } = useUpdater();
@@ -46,7 +47,7 @@ const Navigation = () => {
 
     // Update selected key based on current route
     useEffect(() => {
-        const currentTab = TABS.find((tab) => tab.path === location.pathname);
+        const currentTab = TABS.find(tab => tab.path === location.pathname);
         if (currentTab) {
             setSelectedKey(currentTab.key);
         }
@@ -59,7 +60,7 @@ const Navigation = () => {
         }
 
         const tabKey = key as TabKey;
-        const tab = TABS.find((t) => t.key === tabKey);
+        const tab = TABS.find(t => t.key === tabKey);
         if (tab) {
             setSelectedKey(tabKey);
             navigate(tab.path);
@@ -81,10 +82,10 @@ const Navigation = () => {
                 selectedKey={selectedKey}
                 onSelectionChange={handleTabChange}
             >
-                {TABS.map((tab) => (
+                {TABS.map(tab => (
                     <Tab
                         key={tab.key}
-                        title={
+                        title={(
                             <Tooltip
                                 aria-label={tab.title}
                                 content={tab.title}
@@ -92,13 +93,13 @@ const Navigation = () => {
                             >
                                 {tab.icon}
                             </Tooltip>
-                        }
+                        )}
                     />
                 ))}
                 {isUpdateAvailable && (
                     <Tab
                         key="update"
-                        title={
+                        title={(
                             <Tooltip
                                 aria-label="Update Available"
                                 content="Update Available"
@@ -112,12 +113,12 @@ const Navigation = () => {
                                     </span>
                                 </div>
                             </Tooltip>
-                        }
+                        )}
                     />
                 )}
             </Tabs>
         </div>
     );
-};
+}
 
 export default Navigation;

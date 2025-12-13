@@ -1,7 +1,7 @@
 import { HeroUIProvider } from "@heroui/system";
+import { ToastProvider } from "@heroui/toast";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState } from "react";
-import { ToastProvider } from "@heroui/toast";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
     const [queryClient] = useState(
@@ -12,7 +12,7 @@ export default function Providers({ children }: { children: React.ReactNode }) {
                         refetchOnWindowFocus: false,
                     },
                 },
-            })
+            }),
     );
     return (
         <QueryClientProvider client={queryClient}>

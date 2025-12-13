@@ -1,6 +1,6 @@
 import { createHashRouter } from "react-router";
-import Main from "./screens/main";
 import DefaultLayout from "./layouts/DefaultLayout";
+import Main from "./screens/main";
 import NetworkInterfaces from "./screens/NetworkInterfaces";
 import Servers from "./screens/Servers";
 import Setting from "./screens/Setting";

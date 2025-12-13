@@ -1,10 +1,10 @@
-export type SERVER = {
+export interface SERVER {
     type: "doh" | "dns";
     key: string;
     name: string;
     servers: string[];
     tags: string[];
-};
+}
 
 export const PROTOCOLS: Protocol[] = [
     {
@@ -17,7 +17,7 @@ export const PROTOCOLS: Protocol[] = [
     },
 ];
 
-export type Protocol = {
+export interface Protocol {
     key: string;
     name: string;
-};
+}

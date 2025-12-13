@@ -1,9 +1,9 @@
+import type { SERVER } from "../types";
 // store/useServerStore.ts
 import { create } from "zustand";
 import { loadServers, persistServers, resetServers } from "./tauriServersStore";
-import type { SERVER } from "../types";
 
-type ServerState = {
+interface ServerState {
     servers: SERVER[];
     isLoading: boolean;
     load: () => Promise<void>;
@@ -11,7 +11,7 @@ type ServerState = {
     updateServer: (server: SERVER) => Promise<void>;
     removeServer: (key: string) => Promise<void>;
     resetServers: () => Promise<void>;
-};
+}
 
 export const useServerStore = create<ServerState>((set, get) => ({
     servers: [],
@@ -29,15 +29,15 @@ export const useServerStore = create<ServerState>((set, get) => ({
     },
 
     updateServer: async (server) => {
-        const servers = get().servers.map((s) =>
-            s.key === server.key ? server : s
+        const servers = get().servers.map(s =>
+            s.key === server.key ? server : s,
         );
         set({ servers });
         await persistServers(servers);
     },
 
     removeServer: async (key) => {
-        const servers = get().servers.filter((s) => s.key !== key);
+        const servers = get().servers.filter(s => s.key !== key);
         set({ servers });
         await persistServers(servers);
     },

@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import { Button } from "@heroui/button";
 import {
     Modal,
@@ -7,11 +6,12 @@ import {
     ModalFooter,
     ModalHeader,
 } from "@heroui/modal";
-import { useUpdater } from "../hooks/useUpdater";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { useEffect } from "react";
 import { getReleaseUrl } from "../constants/updater";
+import { useUpdater } from "../hooks/useUpdater";
 
-const Updater = () => {
+function Updater() {
     const {
         isDownloading,
         isInstalling,
@@ -39,8 +39,8 @@ const Updater = () => {
         }
     };
 
-    const downloadProgress =
-        contentLength > 0 ? ((downloaded / contentLength) * 100).toFixed(1) : 0;
+    const downloadProgress
+        = contentLength > 0 ? ((downloaded / contentLength) * 100).toFixed(1) : 0;
 
     return (
         <>
@@ -48,7 +48,8 @@ const Updater = () => {
             <Modal
                 isOpen={isModalOpen}
                 onOpenChange={(open) => {
-                    if (!open) closeModal();
+                    if (!open)
+                        closeModal();
                 }}
                 placement="center"
                 backdrop="opaque"
@@ -103,7 +104,8 @@ const Updater = () => {
                                                 <div className="flex justify-between text-sm">
                                                     <span>Downloading...</span>
                                                     <span className="font-medium">
-                                                        {downloadProgress}%
+                                                        {downloadProgress}
+                                                        %
                                                     </span>
                                                 </div>
                                                 <div className="w-full bg-default-200 rounded-full h-2">
@@ -116,16 +118,19 @@ const Updater = () => {
                                                 </div>
                                                 <p className="text-xs text-default-500">
                                                     {(
-                                                        downloaded /
-                                                        1024 /
-                                                        1024
-                                                    ).toFixed(2)}{" "}
-                                                    MB /{" "}
+                                                        downloaded
+                                                        / 1024
+                                                        / 1024
+                                                    ).toFixed(2)}
+                                                    {" "}
+                                                    MB /
+                                                    {" "}
                                                     {(
-                                                        contentLength /
-                                                        1024 /
-                                                        1024
-                                                    ).toFixed(2)}{" "}
+                                                        contentLength
+                                                        / 1024
+                                                        / 1024
+                                                    ).toFixed(2)}
+                                                    {" "}
                                                     MB
                                                 </p>
                                             </div>
@@ -163,8 +168,8 @@ const Updater = () => {
                                     {isDownloading
                                         ? "Downloading..."
                                         : isInstalling
-                                        ? "Installing..."
-                                        : "Update Now"}
+                                            ? "Installing..."
+                                            : "Update Now"}
                                 </Button>
                             </ModalFooter>
                         </>
@@ -173,6 +178,6 @@ const Updater = () => {
             </Modal>
         </>
     );
-};
+}
 
 export default Updater;

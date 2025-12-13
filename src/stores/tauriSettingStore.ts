@@ -30,15 +30,15 @@ export async function saveTestDomain(testDomain: string) {
     await store.save();
 }
 
-export const useTestDomain = () => {
+export function useTestDomain() {
     const queryClient = useQueryClient();
     const { data: testDomain, isLoading: isLoadingTestDomain } = useQuery({
         queryKey: ["test_domain"],
         queryFn: loadTestDomain,
     });
 
-    const { mutate: saveTestDomainMutation, isPending: isSavingTestDomain } =
-        useMutation({
+    const { mutate: saveTestDomainMutation, isPending: isSavingTestDomain }
+        = useMutation({
             mutationFn: (testDomain: string) => saveTestDomain(testDomain),
             onSuccess: () => {
                 queryClient.invalidateQueries({ queryKey: ["test_domain"] });
@@ -51,4 +51,4 @@ export const useTestDomain = () => {
         mutate: saveTestDomainMutation,
         isSaving: isSavingTestDomain,
     };
-};
+}

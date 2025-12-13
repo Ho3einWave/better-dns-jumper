@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from "react";
-import { useServerStore } from "../stores/useServersStore";
+import type { SERVER } from "../types";
 import { Button } from "@heroui/button";
-import ServerModal from "../components/ServerModal";
-import ConfirmModal from "../components/ConfirmModal";
-import { PROTOCOLS, type SERVER } from "../types";
 import { Chip } from "@heroui/chip";
 import { Select, SelectItem } from "@heroui/select";
+import { useEffect, useMemo, useState } from "react";
+import ConfirmModal from "../components/ConfirmModal";
+import ServerModal from "../components/ServerModal";
+import { useServerStore } from "../stores/useServersStore";
+import { PROTOCOLS } from "../types";
 
-const Servers = () => {
+function Servers() {
     const {
         load,
         servers,
@@ -26,13 +27,15 @@ const Servers = () => {
     const filteredServers = useMemo(() => {
         if (activeTab === "all") {
             return servers;
-        } else {
-            return servers.filter((server) => server.type === activeTab);
+        }
+        else {
+            return servers.filter(server => server.type === activeTab);
         }
     }, [servers, activeTab]);
 
     useEffect(() => {
         load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleResetServers = () => {
@@ -70,14 +73,15 @@ const Servers = () => {
     const handleSaveServer = async (server: SERVER) => {
         if (modalMode === "edit") {
             await updateServer(server);
-        } else {
+        }
+        else {
             await addServer(server);
         }
         load();
     };
 
     const getServerType = (type: string) => {
-        return PROTOCOLS.find((p) => p.key === type)?.name;
+        return PROTOCOLS.find(p => p.key === type)?.name;
     };
 
     return (
@@ -91,9 +95,8 @@ const Servers = () => {
                         <div>
                             <Select
                                 selectedKeys={[activeTab]}
-                                onSelectionChange={(key) =>
-                                    setActiveTab(key.currentKey as string)
-                                }
+                                onSelectionChange={key =>
+                                    setActiveTab(key.currentKey as string)}
                                 size="sm"
                                 variant="flat"
                                 aria-label="Select a protocol"
@@ -125,14 +128,17 @@ const Servers = () => {
                 </div>
 
                 <div className=" overflow-y-auto px-2  flex flex-col gap-2">
-                    {filteredServers.map((server) => (
+                    {filteredServers.map(server => (
                         <div
                             key={server.key}
                             className="flex items-center justify-between bg-zinc-800/30 border-1 border-zinc-800 rounded-2xl p-2 pl-3"
                         >
                             <div className="flex flex-col">
                                 <div className="text-sm">
-                                    <span>{server.name} </span>
+                                    <span>
+                                        {server.name}
+                                        {" "}
+                                    </span>
                                     <Chip
                                         color="primary"
                                         variant="flat"
@@ -163,8 +169,7 @@ const Servers = () => {
                                     color="danger"
                                     variant="flat"
                                     onPress={() =>
-                                        handleRemoveServer(server.key)
-                                    }
+                                        handleRemoveServer(server.key)}
                                 >
                                     Remove
                                 </Button>
@@ -194,6 +199,6 @@ const Servers = () => {
             />
         </div>
     );
-};
+}
 
 export default Servers;

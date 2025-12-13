@@ -14,7 +14,8 @@ export function VirtualMachine(props: SVGProps<SVGSVGElement>) {
                 stroke="currentColor"
                 strokeWidth={2}
                 d="M1 23h13V10H1zm9-4h13V6H10zm-5-5h13V1H5z"
-            ></path>
+            >
+            </path>
         </svg>
     );
 }
