@@ -1,6 +1,6 @@
 [package]
 name = "better-dns-jumper"
-version = "0.3.0"
+version = "0.4.0"
 description = "A Tauri App"
 authors = ["you"]
 edition = "2021"
@@ -24,7 +24,13 @@ tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-winapi = { version = "0.3.9", features = ["iphlpapi", "winerror", "iptypes", "ws2def", "ifdef"] }
+winapi = { version = "0.3.9", features = [
+    "iphlpapi",
+    "winerror",
+    "iptypes",
+    "ws2def",
+    "ifdef",
+] }
 network-interface = "2.0.3"
 wmi = "0.17.3"
 tokio = { version = "1", features = ["full"] }
