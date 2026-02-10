@@ -49,21 +49,10 @@ impl DnsServer {
     }
 
     pub async fn run(&mut self, server: String) -> Result<(), String> {
-        let server_url =
-            url::Url::parse(&server).map_err(|e| format!("Failed to parse server: {}", e))?;
-
-        let protocol = server_url.scheme();
-        if protocol != "https" {
-            error!("Invalid protocol: {}", protocol);
-            return Err(format!("Invalid protocol: {}", protocol));
-        }
-
-        let domain = server_url.host().ok_or("Failed to get domain")?;
-        let port = server_url.port().unwrap_or(443);
-        let path = server_url.path();
+        let (domain, port, proto, http_endpoint) = Self::parse_server_url(&server)?;
 
         let resolver =
-            DnsServer::create_dns_resolver(domain.to_string(), port, Some(path.to_string()))
+            DnsServer::create_dns_resolver(domain, port, proto, http_endpoint)
                 .map_err(|e| {
                     error!("Failed to create DNS resolver: {}", e);
                     format!("Failed to create DNS resolver: {}", e)
@@ -145,9 +134,53 @@ impl DnsServer {
         Ok(())
     }
 
+    /// Parse a server URL string into (domain, port, protocol, http_endpoint).
+    /// Supported schemes: https://, tls://, quic://, h3://
+    pub fn parse_server_url(server: &str) -> Result<(String, u16, Protocol, Option<String>), String> {
+        let server_url =
+            url::Url::parse(server).map_err(|e| format!("Failed to parse server: {}", e))?;
+
+        let scheme = server_url.scheme();
+        let domain = server_url
+            .host()
+            .ok_or("Failed to get domain")?
+            .to_string();
+
+        match scheme {
+            "https" => {
+                let port = server_url.port().unwrap_or(443);
+                let path = server_url.path().to_string();
+                Ok((domain, port, Protocol::Https, Some(path)))
+            }
+            "tls" => {
+                let port = server_url.port().unwrap_or(853);
+                Ok((domain, port, Protocol::Tls, None))
+            }
+            "quic" => {
+                let port = server_url.port().unwrap_or(853);
+                Ok((domain, port, Protocol::Quic, None))
+            }
+            "h3" => {
+                let port = server_url.port().unwrap_or(443);
+                let path = server_url.path().to_string();
+                let endpoint = if path.is_empty() || path == "/" {
+                    "/dns-query".to_string()
+                } else {
+                    path
+                };
+                Ok((domain, port, Protocol::H3, Some(endpoint)))
+            }
+            _ => {
+                error!("Unsupported protocol scheme: {}", scheme);
+                Err(format!("Unsupported protocol scheme: {}", scheme))
+            }
+        }
+    }
+
     pub fn create_dns_resolver(
         domain: String,
         port: u16,
+        protocol: Protocol,
         http_endpoint: Option<String>,
     ) -> Result<TokioResolver, String> {
         let mut config = ResolverConfig::new();
@@ -160,13 +193,18 @@ impl DnsServer {
             .next()
             .ok_or(format!("Failed to resolve domain: {}", &domain))?;
 
-        info!("DNS Server Resolved: {:?}", socket_addr);
+        info!("DNS Server Resolved: {:?} (protocol: {:?})", socket_addr, protocol);
+
+        let tls_dns_name = match protocol {
+            Protocol::Udp | Protocol::Tcp => None,
+            _ => Some(domain),
+        };
 
         config.add_name_server(NameServerConfig {
             socket_addr,
-            protocol: Protocol::Https,
-            tls_dns_name: Some(domain),
-            http_endpoint: http_endpoint,
+            protocol,
+            tls_dns_name,
+            http_endpoint,
             bind_addr: None,
             trust_negative_responses: true,
         });
@@ -178,8 +216,6 @@ impl DnsServer {
         let resolver = Resolver::builder_with_config(config, connector)
             .with_options(opts)
             .build();
-
-        dbg!(&resolver);
 
         Ok(resolver)
     }

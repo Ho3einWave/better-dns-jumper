@@ -62,9 +62,9 @@ export const useClearDnsCache = (
     });
 };
 
-export const useTestDohServer = (
+export const useTestServer = (
     params?: MutationOptions<
-        DoHTestResult,
+        ServerTestResult,
         Error,
         { server: string; domain: string }
     >
@@ -72,7 +72,7 @@ export const useTestDohServer = (
     return useMutation({
         mutationFn: async (params: { server: string; domain: string }) => {
             const testDomain = await loadTestDomain();
-            return invoke<DoHTestResult>("test_doh_server", {
+            return invoke<ServerTestResult>("test_server", {
                 ...params,
                 domain: testDomain || DEFAULT_SETTING.test_domain,
             });
@@ -81,7 +81,7 @@ export const useTestDohServer = (
     });
 };
 
-export type DoHTestResult = {
+export type ServerTestResult = {
     success: boolean;
     latency: number;
     error: string | null;

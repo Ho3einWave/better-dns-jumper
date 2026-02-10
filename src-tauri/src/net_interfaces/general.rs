@@ -156,9 +156,9 @@ pub struct Interface {
     pub config: Option<NetworkAdapterConfigurationWmi>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Address {
-    pub ip: String,
-    pub subnet: Option<String>,
-    pub gateway: Option<String>,
-}
+// #[derive(Debug, Clone, Serialize, Deserialize)]
+// pub struct Address {
+//     pub ip: String,
+//     pub subnet: Option<String>,
+//     pub gateway: Option<String>,
+// }

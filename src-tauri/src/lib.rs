@@ -17,7 +17,7 @@ use tauri_plugin_window_state::StateFlags;
 
 use commands::dns::{
     clear_dns, clear_dns_cache, clear_dns_logs, delete_dns_rule, get_dns_logs, get_dns_rules,
-    get_interface_dns_info, save_dns_rule, set_dns, test_doh_server, toggle_dns_rule,
+    get_interface_dns_info, save_dns_rule, set_dns, test_server, toggle_dns_rule,
 };
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
 use tauri::RunEvent;
@@ -86,7 +86,7 @@ pub fn run() {
             get_interface_dns_info,
             clear_dns,
             clear_dns_cache,
-            test_doh_server,
+            test_server,
             change_interface_state,
             get_dns_logs,
             clear_dns_logs,

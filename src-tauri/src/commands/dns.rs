@@ -3,7 +3,7 @@ use crate::dns::dns_rules::DnsRules;
 use crate::dns::dns_types::{DnsQueryLog, DnsRule};
 use crate::dns::{dns_server, dns_utils};
 use crate::net_interfaces::general;
-use crate::types::DoHTestResult;
+use crate::types::ServerTestResult;
 use crate::AppState;
 use log::{debug, error, info};
 use std::sync::Arc;
@@ -12,32 +12,50 @@ use tokio::sync::{Mutex, RwLock};
 use tokio::time::{self, Duration, Instant};
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn test_doh_server(server: String, domain: String) -> Result<DoHTestResult, String> {
-    let server_url =
-        url::Url::parse(&server).map_err(|e| format!("Failed to parse server: {}", e))?;
+pub async fn test_server(server: String, domain: String) -> Result<ServerTestResult, String> {
+    use hickory_proto::xfer::Protocol;
+    use std::net::SocketAddr;
 
-    let protocol = server_url.scheme();
-    if protocol != "https" {
-        error!("Invalid protocol: {}", protocol);
-        return Err(format!("Invalid protocol: {}", protocol));
-    }
+    // Try to detect if this is a plain IP address (plain DNS / UDP)
+    let is_plain_ip = server.parse::<std::net::IpAddr>().is_ok();
 
-    let resolver_domain = server_url.host().ok_or("Failed to get domain")?;
-    let port = server_url.port().unwrap_or(443);
-    let path = server_url.path();
-    let resolver = dns_server::DnsServer::create_dns_resolver(
-        resolver_domain.to_string(),
-        port,
-        Some(path.to_string()),
-    );
+    let resolver = if is_plain_ip {
+        // Plain DNS over UDP
+        let ip: std::net::IpAddr = server
+            .parse()
+            .map_err(|e| format!("Failed to parse IP: {}", e))?;
+        let socket_addr = SocketAddr::new(ip, 53);
 
-    let resolver = match resolver {
-        Ok(resolver) => resolver,
-        Err(e) => {
-            error!("Failed to create DNS resolver: {:?}", e);
-            return Err(format!("Failed to create DNS resolver: {:?}", e));
-        }
+        let mut config = hickory_resolver::config::ResolverConfig::new();
+        config.add_name_server(hickory_resolver::config::NameServerConfig {
+            socket_addr,
+            protocol: Protocol::Udp,
+            tls_dns_name: None,
+            http_endpoint: None,
+            bind_addr: None,
+            trust_negative_responses: true,
+        });
+
+        let opts = hickory_resolver::config::ResolverOpts::default();
+        let connector = hickory_resolver::name_server::GenericConnector::<
+            hickory_proto::runtime::TokioRuntimeProvider,
+        >::default();
+
+        hickory_resolver::Resolver::builder_with_config(config, connector)
+            .with_options(opts)
+            .build()
+    } else {
+        // URL-based protocol (https://, tls://, quic://, h3://)
+        let (resolver_domain, port, proto, http_endpoint) =
+            dns_server::DnsServer::parse_server_url(&server)?;
+
+        dns_server::DnsServer::create_dns_resolver(resolver_domain, port, proto, http_endpoint)
+            .map_err(|e| {
+                error!("Failed to create DNS resolver: {:?}", e);
+                format!("Failed to create DNS resolver: {:?}", e)
+            })?
     };
+
     let timeout = Duration::from_secs(3);
 
     let start = Instant::now();
@@ -51,9 +69,9 @@ pub async fn test_doh_server(server: String, domain: String) -> Result<DoHTestRe
                 domain, server, elapsed
             );
             lookup.iter().for_each(|item| {
-                dbg!(&item);
+                debug!("Resolved: {:?}", item);
             });
-            Ok(DoHTestResult {
+            Ok(ServerTestResult {
                 success: true,
                 latency: elapsed.as_millis() as usize,
                 error: None,
@@ -98,7 +116,7 @@ pub async fn set_dns(
         "path: {}, dns_servers: {:?}, dns_type: {}",
         path, dns_servers, dns_type
     );
-    if dns_type == "doh" {
+    if dns_type == "doh" || dns_type == "dot" || dns_type == "doq" || dns_type == "doh3" {
         let mut app_state = app_state.lock().await;
         app_state.dns_server.run(dns_servers[0].to_string()).await?;
 
@@ -111,7 +129,7 @@ pub async fn set_dns(
         return result;
     } else {
         error!("Invalid DNS type: {}", dns_type);
-        todo!()
+        return Err(format!("Invalid DNS type: {}", dns_type));
     }
 }
 
