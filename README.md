@@ -99,7 +99,7 @@ src-tauri/       # Rust backend
 - [ ] Improved error handling
 - [x] Clean exit & automatic DNS restore
 - [ ] Better logs & in-app log viewer
-- [ ] DNS-over-TLS / DNS-over-QUIC / DoH3
+- [x] DNS-over-TLS / DNS-over-QUIC / DoH3
 - [ ] Reduce WMI usage
 - [ ] CLI support
 - [ ] Multi-language support
