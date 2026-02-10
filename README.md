@@ -114,6 +114,7 @@ src-tauri/       # Rust backend
 ## Roadmap
 
 - [ ] Improved error handling
+- [ ] Add support for GoodbyeDPI or zapret or dpibreak
 - [x] Clean exit & automatic DNS restore
 - [ ] Better logs & in-app log viewer
 - [x] DNS-over-TLS / DNS-over-QUIC / DoH3
