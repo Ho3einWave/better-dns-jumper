@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, KeyboardEvent } from "react";
 import {
     Modal,
     ModalContent,
@@ -9,7 +9,8 @@ import {
 import { Input } from "@heroui/input";
 import { Select, SelectItem } from "@heroui/select";
 import { Button } from "@heroui/button";
-import type { SERVER } from "../types";
+import { Chip } from "@heroui/chip";
+import { PROTOCOLS, type SERVER } from "../types";
 
 // Generate key from name: convert to uppercase, replace spaces/special chars with underscores
 const generateKeyFromName = (name: string): string => {
@@ -50,7 +51,6 @@ const isValidPort = (port: string): boolean => {
 const isValidURL = (url: string): boolean => {
     try {
         const parsed = new URL(url.trim());
-        console.log(parsed);
         return parsed.protocol === "https:";
     } catch {
         return false;
@@ -147,12 +147,21 @@ const validateServers = (
     };
 };
 
+// Get default port for a protocol type
+const getDefaultPort = (
+    type: "dns" | "doh" | "dot" | "doq" | "doh3"
+): string => {
+    const protocol = PROTOCOLS.find((p) => p.key === type);
+    return protocol?.defaultPort?.toString() ?? "";
+};
+
 interface ServerModalProps {
     isOpen: boolean;
     onClose: () => void;
     onSave: (server: SERVER) => Promise<void>;
     server?: SERVER | null;
     mode: "add" | "edit";
+    existingKeys?: string[];
 }
 
 const ServerModal = ({
@@ -161,6 +170,7 @@ const ServerModal = ({
     onSave,
     server,
     mode,
+    existingKeys = [],
 }: ServerModalProps) => {
     const [formData, setFormData] = useState<{
         type: "dns" | "doh" | "dot" | "doq" | "doh3";
@@ -169,7 +179,7 @@ const ServerModal = ({
         servers: string;
         hostname: string;
         port: string;
-        tags: string;
+        tags: string[];
     }>({
         type: "dns",
         key: "",
@@ -177,12 +187,19 @@ const ServerModal = ({
         servers: "",
         hostname: "",
         port: "",
-        tags: "",
+        tags: [],
     });
 
+    const [tagInput, setTagInput] = useState("");
     const [serverErrors, setServerErrors] = useState<string[]>([]);
     const [hostnameError, setHostnameError] = useState<string>("");
     const [portError, setPortError] = useState<string>("");
+    const [duplicateError, setDuplicateError] = useState<string>("");
+
+    // Get protocol metadata for the current type
+    const currentProtocol = useMemo(() => {
+        return PROTOCOLS.find((p) => p.key === formData.type);
+    }, [formData.type]);
 
     // Generate key from name when in add mode
     const generatedKey = useMemo(() => {
@@ -195,8 +212,6 @@ const ServerModal = ({
     useEffect(() => {
         if (isOpen) {
             if (mode === "edit" && server) {
-                // For DoH, only show the first server (single URL)
-                // For DoT/DoQ/DoH3, parse hostname:port format
                 let serverValue = "";
                 let hostnameValue = "";
                 let portValue = "";
@@ -210,7 +225,6 @@ const ServerModal = ({
                 ) {
                     if (server.servers.length > 0) {
                         const firstServer = server.servers[0];
-                        // Strip protocol prefix before parsing
                         const cleaned = stripProtocolPrefix(firstServer);
                         const parts = cleaned.split(":");
                         if (parts.length === 2) {
@@ -229,11 +243,13 @@ const ServerModal = ({
                     servers: serverValue,
                     hostname: hostnameValue,
                     port: portValue,
-                    tags: server.tags.join(", "),
+                    tags: [...server.tags],
                 });
+                setTagInput("");
                 setServerErrors([]);
                 setHostnameError("");
                 setPortError("");
+                setDuplicateError("");
             } else {
                 setFormData({
                     type: "dns",
@@ -242,11 +258,13 @@ const ServerModal = ({
                     servers: "",
                     hostname: "",
                     port: "",
-                    tags: "",
+                    tags: [],
                 });
+                setTagInput("");
                 setServerErrors([]);
                 setHostnameError("");
                 setPortError("");
+                setDuplicateError("");
             }
         }
     }, [isOpen, mode, server]);
@@ -262,8 +280,6 @@ const ServerModal = ({
     const handleServersChange = (value: string) => {
         setFormData({ ...formData, servers: value });
 
-        // Validate servers in real-time
-        // For DoH, treat as single value; for DNS, split by comma
         const serverList =
             formData.type === "doh"
                 ? value.trim()
@@ -283,10 +299,27 @@ const ServerModal = ({
     };
 
     const handleTypeChange = (type: "dns" | "doh" | "dot" | "doq" | "doh3") => {
-        setFormData({ ...formData, type, hostname: "", port: "", servers: "" });
+        setFormData({
+            ...formData,
+            type,
+            hostname: "",
+            port: getDefaultPort(type),
+            servers: "",
+        });
         setServerErrors([]);
         setHostnameError("");
         setPortError("");
+    };
+
+    const runCombinedValidation = (hostname: string, port: string) => {
+        if (hostname.trim() && port.trim() && isValidHostname(hostname) && isValidPort(port)) {
+            const protocolPrefix = getProtocolPrefix(formData.type as "dot" | "doq" | "doh3");
+            const combined = `${protocolPrefix}${hostname.trim()}:${port.trim()}`;
+            const validation = validateServers([combined], formData.type);
+            setServerErrors(validation.errors);
+        } else {
+            setServerErrors([]);
+        }
     };
 
     const handleHostnameChange = (value: string) => {
@@ -300,6 +333,7 @@ const ServerModal = ({
         } else {
             setHostnameError("");
         }
+        runCombinedValidation(value, formData.port);
     };
 
     const handlePortChange = (value: string) => {
@@ -313,18 +347,48 @@ const ServerModal = ({
         } else {
             setPortError("");
         }
+        runCombinedValidation(formData.hostname, value);
+    };
+
+    // Tag handling
+    const handleTagInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Enter" || e.key === ",") {
+            e.preventDefault();
+            addTag();
+        } else if (e.key === "Backspace" && tagInput === "" && formData.tags.length > 0) {
+            setFormData((prev) => ({
+                ...prev,
+                tags: prev.tags.slice(0, -1),
+            }));
+        }
+    };
+
+    const addTag = () => {
+        const tag = tagInput.replace(/,/g, "").trim();
+        if (tag && !formData.tags.includes(tag)) {
+            setFormData((prev) => ({
+                ...prev,
+                tags: [...prev.tags, tag],
+            }));
+        }
+        setTagInput("");
+    };
+
+    const removeTag = (index: number) => {
+        setFormData((prev) => ({
+            ...prev,
+            tags: prev.tags.filter((_, i) => i !== index),
+        }));
     };
 
     const handleSave = async () => {
         let serverList: string[] = [];
 
-        // Build server list based on type
         if (
             formData.type === "dot" ||
             formData.type === "doq" ||
             formData.type === "doh3"
         ) {
-            // For DoT/DoQ/DoH3, use hostname:port format
             if (!formData.hostname.trim()) {
                 setHostnameError("Hostname is required");
                 return;
@@ -344,25 +408,21 @@ const ServerModal = ({
                 return;
             }
 
-            // Add server from hostname:port with protocol prefix
             const protocolPrefix = getProtocolPrefix(formData.type);
             serverList.push(
                 `${protocolPrefix}${formData.hostname.trim()}:${formData.port.trim()}`
             );
         } else if (formData.type === "doh") {
-            // For DoH, treat as single value
             serverList = formData.servers.trim()
                 ? [formData.servers.trim()]
                 : [];
         } else {
-            // For DNS, split by comma
             serverList = formData.servers
                 .split(",")
                 .map((s) => s.trim())
                 .filter((s) => s.length > 0);
         }
 
-        // Validate before saving
         const validation = validateServers(serverList, formData.type);
         if (!validation.isValid) {
             setServerErrors(validation.errors);
@@ -371,15 +431,20 @@ const ServerModal = ({
 
         const finalKey = mode === "add" ? generatedKey : formData.key;
 
+        // Duplicate key check
+        if (mode === "add" && existingKeys.includes(finalKey)) {
+            setDuplicateError(
+                "A server with this name already exists. Please choose a different name."
+            );
+            return;
+        }
+
         const serverData: SERVER = {
             type: formData.type,
             key: finalKey.trim(),
             name: formData.name.trim(),
             servers: serverList,
-            tags: formData.tags
-                .split(",")
-                .map((t) => t.trim())
-                .filter((t) => t.length > 0),
+            tags: formData.tags,
         };
 
         if (
@@ -398,7 +463,7 @@ const ServerModal = ({
         <Modal
             isOpen={isOpen}
             onClose={onClose}
-            size="sm"
+            size="md"
             placement="center"
             classNames={{
                 wrapper: "max-h-[100vh] overflow-y-hidden",
@@ -439,13 +504,21 @@ const ServerModal = ({
                                 radius="lg"
                                 label="Name"
                                 value={formData.name}
-                                onValueChange={(value) =>
-                                    setFormData({ ...formData, name: value })
-                                }
+                                onValueChange={(value) => {
+                                    setFormData({ ...formData, name: value });
+                                    setDuplicateError("");
+                                }}
                                 size="sm"
                                 placeholder="e.g., Google DNS"
+                                isInvalid={!!duplicateError}
+                                errorMessage={duplicateError}
                             />
                         </div>
+                        {currentProtocol && (
+                            <p className="text-xs text-zinc-500 -mt-1 px-1">
+                                {currentProtocol.description}
+                            </p>
+                        )}
                         {formData.type === "dot" ||
                         formData.type === "doq" ||
                         formData.type === "doh3" ? (
@@ -467,7 +540,7 @@ const ServerModal = ({
                                     value={formData.port}
                                     onValueChange={handlePortChange}
                                     size="sm"
-                                    placeholder="853"
+                                    placeholder={getDefaultPort(formData.type)}
                                     description="1-65535"
                                     isInvalid={!!portError}
                                     errorMessage={portError}
@@ -495,16 +568,44 @@ const ServerModal = ({
                                 errorMessage={serverErrors.join(", ")}
                             />
                         )}
-                        <Input
-                            label="Tags"
-                            value={formData.tags}
-                            onValueChange={(value) =>
-                                setFormData({ ...formData, tags: value })
-                            }
-                            size="sm"
-                            placeholder="Web, Gaming"
-                            description="Comma-separated list"
-                        />
+                        {serverErrors.length > 0 &&
+                            (formData.type === "dot" ||
+                                formData.type === "doq" ||
+                                formData.type === "doh3") && (
+                                <p className="text-xs text-danger px-1">
+                                    {serverErrors.join(", ")}
+                                </p>
+                            )}
+                        {/* Chip-based tags input */}
+                        <div>
+                            <div className="flex flex-wrap gap-1 items-center bg-zinc-800/50 rounded-xl p-2 min-h-10 border-1 border-zinc-700 focus-within:border-zinc-500 transition-colors">
+                                {formData.tags.map((tag, index) => (
+                                    <Chip
+                                        key={`${tag}-${index}`}
+                                        size="sm"
+                                        variant="flat"
+                                        onClose={() => removeTag(index)}
+                                    >
+                                        {tag}
+                                    </Chip>
+                                ))}
+                                <input
+                                    className="bg-transparent outline-none text-sm text-white flex-1 min-w-20 px-1"
+                                    value={tagInput}
+                                    onChange={(e) => setTagInput(e.target.value)}
+                                    onKeyDown={handleTagInputKeyDown}
+                                    onBlur={addTag}
+                                    placeholder={
+                                        formData.tags.length === 0
+                                            ? "Type a tag and press Enter..."
+                                            : ""
+                                    }
+                                />
+                            </div>
+                            <p className="text-xs text-zinc-500 mt-1 px-1">
+                                Press Enter or comma to add a tag
+                            </p>
+                        </div>
                     </div>
                 </ModalBody>
                 <ModalFooter>

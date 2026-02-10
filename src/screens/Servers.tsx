@@ -1,11 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useServerStore } from "../stores/useServersStore";
 import { Button } from "@heroui/button";
+import { Input } from "@heroui/input";
+import { Tab, Tabs } from "@heroui/tabs";
 import ServerModal from "../components/ServerModal";
+import ServerCard from "../components/ServerCard";
 import ConfirmModal from "../components/ConfirmModal";
 import { PROTOCOLS, type SERVER } from "../types";
-import { Chip } from "@heroui/chip";
-import { Select, SelectItem } from "@heroui/select";
+import { useTestServer, type ServerTestResult } from "../hooks/useDns";
 
 const Servers = () => {
     const {
@@ -18,22 +20,107 @@ const Servers = () => {
     } = useServerStore();
 
     const [activeTab, setActiveTab] = useState("all");
+    const [searchQuery, setSearchQuery] = useState("");
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [modalMode, setModalMode] = useState<"add" | "edit">("add");
     const [editingServer, setEditingServer] = useState<SERVER | null>(null);
     const [isConfirmModalOpen, setIsConfirmModalOpen] = useState(false);
+    const [deletingServerKey, setDeletingServerKey] = useState<string | null>(
+        null
+    );
+    const [testResults, setTestResults] = useState<
+        Map<string, ServerTestResult | "testing" | null>
+    >(new Map());
+
+    const { mutate: testServer } = useTestServer({
+        onSuccess: (data, variables) => {
+            const serverKey = servers.find(
+                (s) =>
+                    s.servers[0] === variables.server ||
+                    s.servers.includes(variables.server)
+            )?.key;
+            if (serverKey) {
+                setTestResults((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(serverKey, data);
+                    return newMap;
+                });
+            }
+        },
+        onError: (error, variables) => {
+            const serverKey = servers.find(
+                (s) =>
+                    s.servers[0] === variables.server ||
+                    s.servers.includes(variables.server)
+            )?.key;
+            if (serverKey) {
+                setTestResults((prev) => {
+                    const newMap = new Map(prev);
+                    newMap.set(serverKey, {
+                        success: false,
+                        latency: 0,
+                        error: error.message || "Test failed",
+                    });
+                    return newMap;
+                });
+            }
+        },
+    });
 
     const filteredServers = useMemo(() => {
-        if (activeTab === "all") {
-            return servers;
-        } else {
-            return servers.filter((server) => server.type === activeTab);
+        let result = servers;
+
+        // Filter by protocol tab
+        if (activeTab !== "all") {
+            result = result.filter((server) => server.type === activeTab);
         }
-    }, [servers, activeTab]);
+
+        // Filter by search query
+        if (searchQuery.trim()) {
+            const query = searchQuery.toLowerCase();
+            result = result.filter(
+                (server) =>
+                    server.name.toLowerCase().includes(query) ||
+                    server.servers.some((s) => s.toLowerCase().includes(query)) ||
+                    server.tags.some((t) => t.toLowerCase().includes(query))
+            );
+        }
+
+        return result;
+    }, [servers, activeTab, searchQuery]);
 
     useEffect(() => {
         load();
     }, []);
+
+    // Auto-test servers when tab changes or servers load
+    useEffect(() => {
+        const serversToTest =
+            activeTab === "all"
+                ? servers
+                : servers.filter((s) => s.type === activeTab);
+
+        // Mark untested servers as testing
+        setTestResults((prev) => {
+            const newMap = new Map(prev);
+            serversToTest.forEach((server) => {
+                if (!newMap.has(server.key)) {
+                    newMap.set(server.key, "testing");
+                }
+            });
+            return newMap;
+        });
+
+        // Test servers that haven't been tested yet
+        serversToTest.forEach((server) => {
+            if (!testResults.has(server.key)) {
+                testServer({
+                    server: server.servers[0],
+                    domain: "google.com",
+                });
+            }
+        });
+    }, [activeTab, servers]);
 
     const handleResetServers = () => {
         setIsConfirmModalOpen(true);
@@ -42,12 +129,25 @@ const Servers = () => {
     const handleConfirmReset = async () => {
         await resetServers();
         load();
+        setTestResults(new Map());
         setIsConfirmModalOpen(false);
     };
 
-    const handleRemoveServer = async (key: string) => {
-        await removeServer(key);
-        load();
+    const handleRequestDelete = (key: string) => {
+        setDeletingServerKey(key);
+    };
+
+    const handleConfirmDelete = async () => {
+        if (deletingServerKey) {
+            await removeServer(deletingServerKey);
+            load();
+            setTestResults((prev) => {
+                const newMap = new Map(prev);
+                newMap.delete(deletingServerKey);
+                return newMap;
+            });
+            setDeletingServerKey(null);
+        }
     };
 
     const handleOpenAddModal = () => {
@@ -76,104 +176,86 @@ const Servers = () => {
         load();
     };
 
-    const getServerType = (type: string) => {
-        return PROTOCOLS.find((p) => p.key === type)?.name;
-    };
+    const deletingServerName = deletingServerKey
+        ? servers.find((s) => s.key === deletingServerKey)?.name ?? "this server"
+        : "this server";
 
     return (
         <div className="flex flex-col items-center justify-center h-full">
-            <div className="absolute left-20  bg-zinc-900/50 rounded-2xl inner-container-size  flex flex-col overflow-hidden gap-2 py-2">
-                <div className="px-2 pl-4  flex items-center justify-between">
-                    <div>
-                        <span>Servers</span>
-                    </div>
-                    <div className="flex gap-2">
-                        <div>
-                            <Select
-                                selectedKeys={[activeTab]}
-                                onSelectionChange={(key) =>
-                                    setActiveTab(key.currentKey as string)
-                                }
-                                size="sm"
-                                variant="flat"
-                                aria-label="Select a protocol"
-                                aria-labelledby="Select a protocol"
-                                className="min-w-24"
-                            >
-                                <SelectItem key="all">All</SelectItem>
-                                <SelectItem key="dns">DNS</SelectItem>
-                                <SelectItem key="doh">DoH</SelectItem>
-                                <SelectItem key="dot">DoT</SelectItem>
-                                <SelectItem key="doq">DoQ</SelectItem>
-                                <SelectItem key="doh3">DoH3</SelectItem>
-                            </Select>
-                        </div>
-                        <Button
-                            size="sm"
-                            color="primary"
-                            variant="flat"
-                            onPress={handleOpenAddModal}
-                        >
-                            Add Server
-                        </Button>
-                        <Button
-                            size="sm"
-                            color="default"
-                            variant="flat"
-                            onPress={handleResetServers}
-                        >
-                            Restore Defaults
-                        </Button>
-                    </div>
+            <div className="absolute left-20 inner-container-size bg-zinc-900/50 rounded-2xl flex flex-col overflow-hidden">
+                {/* Tabs header */}
+                <div className="px-3 pt-2">
+                    <Tabs
+                        variant="underlined"
+                        size="sm"
+                        color="primary"
+                        selectedKey={activeTab}
+                        onSelectionChange={(key) =>
+                            setActiveTab(key as string)
+                        }
+                        classNames={{
+                            tabList: "gap-3",
+                        }}
+                    >
+                        <Tab key="all" title="All" />
+                        {PROTOCOLS.map((protocol) => (
+                            <Tab key={protocol.key} title={protocol.name} />
+                        ))}
+                    </Tabs>
                 </div>
 
-                <div className=" overflow-y-auto px-2  flex flex-col gap-2">
-                    {filteredServers.map((server) => (
-                        <div
-                            key={server.key}
-                            className="flex items-center justify-between bg-zinc-800/30 border-1 border-zinc-800 rounded-2xl p-2 pl-3"
-                        >
-                            <div className="flex flex-col">
-                                <div className="text-sm">
-                                    <span>{server.name} </span>
-                                    <Chip
-                                        color="primary"
-                                        variant="flat"
-                                        size="sm"
-                                        className="border-1 border-primary"
-                                    >
-                                        {getServerType(server.type)}
-                                    </Chip>
-                                </div>
-                                <div>
-                                    <span className="text-xs text-zinc-400">
-                                        {server.servers.join(", ")}
-                                    </span>
-                                </div>
-                            </div>
+                {/* Toolbar */}
+                <div className="px-3 py-2 flex items-center gap-2">
+                    <Input
+                        size="sm"
+                        isClearable
+                        placeholder="Search servers..."
+                        value={searchQuery}
+                        onValueChange={setSearchQuery}
+                        className="flex-1"
+                        classNames={{
+                            inputWrapper: "bg-zinc-800/50",
+                        }}
+                    />
+                    <Button
+                        size="sm"
+                        color="default"
+                        variant="flat"
+                        onPress={handleResetServers}
+                    >
+                        Restore Defaults
+                    </Button>
+                    <Button
+                        size="sm"
+                        color="primary"
+                        variant="flat"
+                        onPress={handleOpenAddModal}
+                    >
+                        + Add
+                    </Button>
+                </div>
 
-                            <div className="flex gap-2">
-                                <Button
-                                    size="sm"
-                                    color="primary"
-                                    variant="flat"
-                                    onPress={() => handleOpenEditModal(server)}
-                                >
-                                    Edit
-                                </Button>
-                                <Button
-                                    size="sm"
-                                    color="danger"
-                                    variant="flat"
-                                    onPress={() =>
-                                        handleRemoveServer(server.key)
-                                    }
-                                >
-                                    Remove
-                                </Button>
-                            </div>
+                {/* Server list */}
+                <div className="overflow-y-auto px-3 pb-3 flex flex-col gap-2 flex-1">
+                    {filteredServers.length === 0 ? (
+                        <div className="flex items-center justify-center flex-1 text-zinc-500 text-sm">
+                            No servers found
                         </div>
-                    ))}
+                    ) : (
+                        filteredServers.map((server) => (
+                            <ServerCard
+                                key={server.key}
+                                server={server}
+                                testResult={
+                                    testResults.get(server.key) ?? null
+                                }
+                                onEdit={() => handleOpenEditModal(server)}
+                                onRemove={() =>
+                                    handleRequestDelete(server.key)
+                                }
+                            />
+                        ))
+                    )}
                 </div>
             </div>
 
@@ -183,6 +265,7 @@ const Servers = () => {
                 onSave={handleSaveServer}
                 server={editingServer}
                 mode={modalMode}
+                existingKeys={servers.map((s) => s.key)}
             />
 
             <ConfirmModal
@@ -192,6 +275,17 @@ const Servers = () => {
                 title="Restore Default Servers?"
                 message="This will replace all your custom servers with the default server list. This action cannot be undone."
                 confirmText="Restore"
+                cancelText="Cancel"
+                confirmColor="danger"
+            />
+
+            <ConfirmModal
+                isOpen={!!deletingServerKey}
+                onClose={() => setDeletingServerKey(null)}
+                onConfirm={handleConfirmDelete}
+                title="Delete Server?"
+                message={`Are you sure you want to delete "${deletingServerName}"? This action cannot be undone.`}
+                confirmText="Delete"
                 cancelText="Cancel"
                 confirmColor="danger"
             />

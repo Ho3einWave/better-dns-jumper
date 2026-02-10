@@ -9,8 +9,8 @@ import {
     useGetInterfaceDnsInfo,
     useClearDns,
     useClearDnsCache,
-    useTestDohServer,
-    type DoHTestResult,
+    useTestServer,
+    type ServerTestResult,
 } from "../hooks/useDns";
 import { DNSServer } from "../components/icons/DNSServer";
 import { Network } from "../components/icons/Network";
@@ -36,8 +36,8 @@ const Main = () => {
         setProtocol,
     } = useDnsState();
     const [IfIdx, setIfIdx] = useState<number | null>(0);
-    const [dohTestResults, setDohTestResults] = useState<
-        Map<string, DoHTestResult | "testing" | null>
+    const [testResults, setTestResults] = useState<
+        Map<string, ServerTestResult | "testing" | null>
     >(new Map());
 
     // Load servers on mount
@@ -79,15 +79,16 @@ const Main = () => {
         },
     });
 
-    const { mutate: testDohServer, isPending } = useTestDohServer({
+    const { mutate: testServer, isPending } = useTestServer({
         onSuccess: (data, variables) => {
-            // Find the server key from the server URL
-            const dohServers = servers.filter((s) => s.type === "doh");
-            const serverKey = dohServers.find(
-                (s) => s.servers[0] === variables.server
+            // Find the server key from the server string
+            const serverKey = servers.find(
+                (s) =>
+                    s.servers[0] === variables.server ||
+                    s.servers.includes(variables.server)
             )?.key;
             if (serverKey) {
-                setDohTestResults((prev) => {
+                setTestResults((prev) => {
                     const newMap = new Map(prev);
                     newMap.set(serverKey, data);
                     return newMap;
@@ -95,13 +96,14 @@ const Main = () => {
             }
         },
         onError: (error, variables) => {
-            // Find the server key from the server URL
-            const dohServers = servers.filter((s) => s.type === "doh");
-            const serverKey = dohServers.find(
-                (s) => s.servers[0] === variables.server
+            // Find the server key from the server string
+            const serverKey = servers.find(
+                (s) =>
+                    s.servers[0] === variables.server ||
+                    s.servers.includes(variables.server)
             )?.key;
             if (serverKey) {
-                setDohTestResults((prev) => {
+                setTestResults((prev) => {
                     const newMap = new Map(prev);
                     newMap.set(serverKey, {
                         success: false,
@@ -114,15 +116,15 @@ const Main = () => {
         },
     });
 
-    // Test all DoH servers when switching to DoH tab
+    // Test all servers of the current protocol when switching tabs
     useEffect(() => {
-        if (protocol === "doh" && !isLoadingServers) {
-            const dohServers = servers.filter((s) => s.type === "doh");
+        if (!isLoadingServers) {
+            const protocolServers = servers.filter((s) => s.type === protocol);
 
-            // Mark all DoH servers as testing
-            setDohTestResults((prev) => {
+            // Mark all servers of this protocol as testing
+            setTestResults((prev) => {
                 const newMap = new Map(prev);
-                dohServers.forEach((server) => {
+                protocolServers.forEach((server) => {
                     if (!newMap.has(server.key)) {
                         newMap.set(server.key, "testing");
                     }
@@ -130,9 +132,9 @@ const Main = () => {
                 return newMap;
             });
 
-            // Test all DoH servers
-            dohServers.forEach((server) => {
-                testDohServer({
+            // Test all servers — for plain DNS, pass the first IP; for others, pass the URL
+            protocolServers.forEach((server) => {
+                testServer({
                     server: server.servers[0],
                     domain: "google.com",
                 });
@@ -178,9 +180,19 @@ const Main = () => {
     };
 
     const renderDnsServers = () => {
-        if (dnsServerData?.type === "doh") {
-            return dnsServerData?.servers.map((server) => {
-                const url = new URL(server);
+        const urlTypes = ["doh", "dot", "doq", "doh3"];
+        if (dnsServerData && urlTypes.includes(dnsServerData.type)) {
+            return dnsServerData.servers.map((server) => {
+                let displayName = server;
+                try {
+                    const url = new URL(server);
+                    displayName = url.hostname || server;
+                } catch {
+                    // For non-standard protocols (tls://, quic://, h3://), parse manually
+                    displayName = server
+                        .replace(/^(tls|quic|h3):\/\//, "")
+                        .replace(/:\d+$/, "");
+                }
                 return (
                     <Tooltip
                         key={server}
@@ -191,7 +203,7 @@ const Main = () => {
                             className="text-zinc-400 max-w-60 truncate cursor-pointer hover:text-white transition-colors"
                             onClick={() => handleCopyToClipboard(server)}
                         >
-                            {url.hostname}
+                            {displayName}
                         </div>
                     </Tooltip>
                 );
@@ -233,8 +245,8 @@ const Main = () => {
         });
     };
 
-    const handleTestDohServer = () => {
-        testDohServer({
+    const handleTestServer = () => {
+        testServer({
             server: dnsServerData?.servers[0] ?? "",
             domain: "google.com",
         });
@@ -306,7 +318,7 @@ const Main = () => {
                     isLoading={isLoadingServers}
                 >
                     {serverList.map((server) => {
-                        const testResult = dohTestResults.get(server.key);
+                        const testResult = testResults.get(server.key);
                         const latencyText =
                             testResult === "testing"
                                 ? "Testing..."
@@ -314,7 +326,9 @@ const Main = () => {
                                 ? `${testResult.latency}ms`
                                 : testResult === null
                                 ? null
-                                : "-";
+                                : testResult
+                                ? "Failed"
+                                : null;
 
                         // Determine color based on availability
                         const getColorClass = () => {
@@ -344,7 +358,7 @@ const Main = () => {
                             >
                                 <div className="flex items-center justify-between w-full gap-2">
                                     <span>{server.name}</span>
-                                    {protocol === "doh" && latencyText && (
+                                    {latencyText && (
                                         <span
                                             className={`text-[10px] ${getColorClass()}`}
                                         >
@@ -388,14 +402,53 @@ const Main = () => {
                     <div className="flex justify-between">
                         <div>
                             Server
-                            {dnsServerData?.type === "doh" ? "" : "s"}:
+                            {dnsServerData?.type === "dns" ? "s" : ""}:
                         </div>
                         <div>{renderDnsServers()}</div>
                     </div>
-                    {/* <div className="flex justify-between">
-                        <div>Tags:</div>
-                        <div>{dnsServerData?.tags.join(", ")}</div>
-                    </div> */}
+                    <div className="flex justify-between">
+                        <div>Ping:</div>
+                        <div>
+                            {(() => {
+                                const result = dnsServerData
+                                    ? testResults.get(dnsServerData.key)
+                                    : null;
+                                if (result === "testing") {
+                                    return (
+                                        <span className="text-yellow-400">
+                                            Testing...
+                                        </span>
+                                    );
+                                } else if (
+                                    result &&
+                                    typeof result === "object" &&
+                                    result.success
+                                ) {
+                                    return (
+                                        <span className="text-green-400">
+                                            {result.latency}ms
+                                        </span>
+                                    );
+                                } else if (
+                                    result &&
+                                    typeof result === "object" &&
+                                    !result.success
+                                ) {
+                                    return (
+                                        <span className="text-red-400">
+                                            Failed
+                                        </span>
+                                    );
+                                } else {
+                                    return (
+                                        <span className="text-zinc-400">
+                                            -
+                                        </span>
+                                    );
+                                }
+                            })()}
+                        </div>
+                    </div>
                     <div className="flex justify-between">
                         <div>Interface:</div>
                         <div>
@@ -444,14 +497,13 @@ const Main = () => {
                         </Button>
                     </Tooltip>
                     <Tooltip
-                        aria-label="Test DoH Server"
-                        content="Test DoH Server"
+                        aria-label="Test Server"
+                        content="Test Server"
                         placement="top"
                     >
                         <Button
                             isIconOnly
-                            onPress={handleTestDohServer}
-                            isDisabled={dnsServerData?.type !== "doh"}
+                            onPress={handleTestServer}
                             isLoading={isPending}
                         >
                             <Test className="text-xl" />
