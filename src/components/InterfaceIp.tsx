@@ -1,5 +1,4 @@
 import { Tooltip } from "@heroui/tooltip";
-import React from "react";
 import { Copy } from "./icons/Copy";
 import { addToast } from "@heroui/toast";
 

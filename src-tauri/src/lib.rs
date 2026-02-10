@@ -13,9 +13,9 @@ use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns,
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
 use tauri::RunEvent;
 use tauri::{Manager, WindowEvent};
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::Mutex;
 
-use crate::utils::clear_dns_on_exit;
+use crate::utils::clear_stale_doh_dns;
 
 pub struct AppState {
     pub dns_server: DnsServer,
@@ -65,44 +65,19 @@ pub fn run() {
         .manage(Mutex::new(AppState {
             dns_server: DnsServer::new(),
         }))
+        .setup(|_app| {
+            // Clean up stale DoH DNS (127.0.0.2) left over from a previous
+            // run that didn't shut down cleanly (e.g. Windows shutdown/crash).
+            clear_stale_doh_dns();
+            Ok(())
+        })
         .build(tauri::generate_context!())
         .expect("error while building tauri application")
         .run(move |_app_handle, _event| match &_event {
             RunEvent::ExitRequested { .. } => {
-                let app_handle = _app_handle.clone();
-                let (tx, rx) = oneshot::channel();
-                tokio::spawn(async move {
-                    let app_state = app_handle.state::<Mutex<AppState>>();
-                    let mut guard = app_state.lock().await;
-                    if guard.dns_server.is_running().await {
-                        let result =
-                            guard.dns_server.shutdown().await.map_err(|e| {
-                                format!("Error while shutting down DNS server: {}", e)
-                            });
-
-                        if result.is_err() {
-                            error!("Error while shutting down DNS server: {:?}", result.err());
-                        }
-
-                        let result = clear_dns_on_exit()
-                            .map_err(|e| format!("Error while clearing DNS: {}", e));
-                        let _ = tx.send(result);
-                    } else {
-                        let _ = tx.send(Ok(()));
-                    }
-                });
-
-                let result = futures::executor::block_on(rx)
-                    .expect("error waiting for cleanup channel")
-                    .map_err(|e| format!("Error while clearing DNS: {}", e));
-                match result {
-                    Ok(_) => {
-                        debug!("DNS cleared successfully");
-                    }
-                    Err(e) => {
-                        error!("Error while clearing DNS: {}", e);
-                    }
-                }
+                // Synchronous cleanup — no tokio dependency, completes before
+                // Windows force-kills the process during shutdown.
+                clear_stale_doh_dns();
             }
             RunEvent::WindowEvent {
                 event: WindowEvent::CloseRequested { .. },
