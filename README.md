@@ -6,13 +6,62 @@
 
 # Better DNS Jumper
 
-A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and use DNS-over-HTTPS (DoH) through a clean, lightweight interface.
+A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and route queries through encrypted DNS protocols — all from a clean, lightweight interface.
+
+![Better DNS Jumper](assets/app.png)
 
 ## Installation
 
 ### Download
 
 Grab the latest version from the **[Releases](https://github.com/Ho3einWave/better-dns-jumper/releases)** page.
+
+
+## Features
+
+* **Multi-Protocol DNS Support**
+
+  * Traditional DNS (UDP/TCP)
+  * DNS-over-HTTPS (DoH) — encrypted via HTTPS
+  * DNS-over-TLS (DoT) — encrypted via TLS
+  * DNS-over-QUIC (DoQ) — encrypted via QUIC
+  * DNS-over-HTTP/3 (DoH3) — encrypted via HTTP/3
+  * Local DNS proxy on `127.0.0.2:53` forwards queries to selected encrypted server
+
+* **Server Management**
+
+  * 30+ built-in servers from Cloudflare, Google, Quad9, AdGuard, ControlD, and more
+  * Tabbed server browser with protocol filtering (All / DNS / DoH / DoT / DoQ / DoH3)
+  * Search servers by name, address, or tag
+  * Auto-ping with latency badges for all servers
+  * Custom server support with per-protocol validation
+  * Tag-based organization with chip input
+  * Restore defaults to reset server list
+
+* **Network Management**
+
+  * View and select network interfaces
+  * Auto-detect best interface
+  * Set / clear DNS per interface
+
+* **DNS Rules**
+
+  * Custom DNS rules to block or redirect traffic
+  * Useful for ad blocking and SNI proxy configurations
+
+* **Tools**
+
+  * Clear DNS cache
+  * Reset DNS settings
+  * DNS query logging
+  * Auto-start on boot
+  * Auto-update
+
+* **UI**
+
+  * Modern dark UI (React + HeroUI)
+  * Smooth animations (Framer Motion)
+  * Persistent window state
 
 
 ## Related Projects
@@ -26,38 +75,6 @@ This project is a very minimalist DoH proxy designed to run on **Cloudflare Work
 * Use a DoH endpoint under your own domain to potentially bypass restrictions on known public DoH providers.
 
 You can then configure the URL of your deployed Cloudflare Worker as a custom DoH server within the **Better DNS Jumper** application.
-
-
-## Features
-
-* **DNS Protocols**
-
-  * Traditional DNS (IPv4)
-  * DNS-over-HTTPS with local proxy
-
-* **Network Management**
-
-  * View and select interfaces
-  * Auto-detect best interface
-  * Set / clear DNS per interface
-
-* **DNS Servers**
-
-  * Built-in popular servers (Google, Cloudflare, Quad9, AdGuard…)
-  * Custom server support
-  * DoH latency/availability testing
-
-* **Tools**
-
-  * Clear DNS cache
-  * Reset DNS settings
-  * Auto-start
-  * Auto-update
-
-* **UI**
-
-  * Modern dark UI (React + HeroUI)
-  * Smooth animations (Framer Motion)
 
 
 ### Build from Source
@@ -74,18 +91,18 @@ npm run tauri build
 
 1. Launch the app (admin required)
 2. Select a network interface (or use Auto)
-3. Choose protocol: **DNS** or **DoH**
+3. Choose a protocol tab: **DNS**, **DoH**, **DoT**, **DoQ**, or **DoH3**
 4. Pick a server
 5. Toggle **Activate** to apply
-6. Optional tools: clear cache, reset DNS, test DoH
+6. Optional tools: clear cache, reset DNS, test server latency
 
 ## Technical Overview
 
 * **Frontend**: React + TypeScript + Tailwind + HeroUI
 * **Backend**: Rust (Tauri 2)
-* **DNS Engine**: Hickory DNS
+* **DNS Engine**: Hickory DNS (supports HTTPS, TLS, QUIC, and H3 resolvers)
 * **Windows Integration**: IP Helper API + WMI
-* **DoH Mode**: Runs a local DNS proxy (`127.0.0.2`) that forwards queries to the selected DoH server
+* **Proxy Mode**: Runs a local DNS proxy (`127.0.0.2:53`) that forwards queries to the selected encrypted DNS server (DoH/DoT/DoQ/DoH3)
 
 Project structure:
 
@@ -100,6 +117,8 @@ src-tauri/       # Rust backend
 - [x] Clean exit & automatic DNS restore
 - [ ] Better logs & in-app log viewer
 - [x] DNS-over-TLS / DNS-over-QUIC / DoH3
+- [x] DNS rules for blocking/redirecting traffic
+- [x] Server latency testing across all protocols
 - [ ] Reduce WMI usage
 - [ ] CLI support
 - [ ] Multi-language support
@@ -112,4 +131,3 @@ PRs are welcome. For major changes, open an issue first.
 ## License
 
 GPLv3 — see `LICENSE`.
-
