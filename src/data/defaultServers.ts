@@ -167,26 +167,48 @@ export const DEFAULT_SERVERS: SERVER[] = [
         tags: ["AdBlock", "Privacy"],
     },
     {
+        type: "dot",
+        key: "DYNX_ADBLOCK",
+        name: "DynX AdBlock DoH",
+        servers: ["tls://dns.dynx.pro"],
+        tags: ["AdBlock", "Privacy"],
+    },
+    {
+        type: "doq",
+        key: "DYNX_ADBLOCK",
+        name: "DynX AdBlock DoH",
+        servers: ["quic://dns.dynx.pro"],
+        tags: ["AdBlock", "Privacy"],
+    },
+    {
         type: "doh",
         key: "DYNX_ANTI_BAN_DOH",
         name: "DynX AntiBan DoH",
-        servers: ["https://anti-ban.dynx.pro/dns-query"],
+        servers: ["https://anti-ban.dynx.pro:8443/dns-query"],
+        tags: ["Bypass", "AntiBan", "Gaming"],
+    },
+    {
+        type: "doq",
+        key: "DYNX_ANTI_BAN_DOH",
+        name: "DynX AntiBan DoH",
+        servers: ["quic://anti-ban.dynx.pro"],
+        tags: ["Bypass", "AntiBan", "Gaming"],
+    },
+    {
+        type: "dot",
+        key: "DYNX_ANTI_BAN_DOH",
+        name: "DynX AntiBan DoH",
+        servers: ["tls://anti-ban.dynx.pro"],
         tags: ["Bypass", "AntiBan", "Gaming"],
     },
     {
         type: "dns",
         key: "DYNX_ANTI_BAN_DNS",
         name: "DynX AntiBan DNS",
-        servers: ["10.70.95.150", "10.70.95.162"],
+        servers: ["193.24.103.1", "193.24.103.1"],
         tags: ["Bypass", "AntiBan", "Gaming"],
     },
-    {
-        type: "dns",
-        key: "SHECAN_DNS",
-        name: "Shecan DNS",
-        servers: ["178.22.122.100", "185.51.200.2"],
-        tags: ["Iran", "Gaming", "Web"],
-    },
+
     {
         type: "dns",
         key: "YANDEX_DNS",
@@ -194,4 +216,46 @@ export const DEFAULT_SERVERS: SERVER[] = [
         servers: ["77.88.8.8", "77.88.8.1"],
         tags: ["Yandex", "Web"],
     },
+
+    // === Shecan ===
+    {
+        type: "dns",
+        key: "SHECAN_FREE_DNS",
+        name: "Shecan Free DNS",
+        servers: ["178.22.122.100", "185.51.200.2"],
+        tags: ["Iran", "Web", "Anti-Sanctions"],
+    },
+    {
+        type: "doh",
+        key: "SHECAN_FREE_DOH",
+        name: "Shecan Free DoH",
+        servers: ["https://free.shecan.ir/dns-query"],
+        tags: ["Iran", "Web", "Anti-Sanctions"],
+    },
+    {
+        type: "dot",
+        key: "SHECAN_FREE_DOT",
+        name: "Shecan Free DoT",
+        servers: ["tls://free.shecan.ir"],
+        tags: ["Iran", "Web", "Anti-Sanctions"],
+    },
+
+    // === Electro ===
+
+    {
+        type: "doh",
+        key: "ELECTRO_DOH",
+        name: "Electro DoH",
+        servers: ["https://dns.electrotm.org/dns-query"],
+        tags: ["Electro", "Web", "Ad Blocker", "Gaming"],
+    },
+    {
+        type: "dot",
+        key: "ELECTRO_DOT",
+        name: "Electro DoT",
+        servers: ["tls://dns.electro.ir"],
+        tags: ["Electro", "Web", "Ad Blocker", "Gaming"],
+    },
+
+
 ];
