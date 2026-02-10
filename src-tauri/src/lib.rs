@@ -4,16 +4,25 @@ mod net_interfaces;
 mod types;
 mod utils;
 
+use dns::dns_log_store::DnsLogStore;
+use dns::dns_rules::DnsRules;
 use dns::dns_server::DnsServer;
+use dns::dns_types::DnsRule;
 use log::{debug, error, info};
 use std::env::temp_dir;
+use std::sync::Arc;
 use tauri_plugin_log::TargetKind;
+use tauri_plugin_store::StoreExt;
+use tauri_plugin_window_state::StateFlags;
 
-use commands::dns::{clear_dns, clear_dns_cache, get_interface_dns_info, set_dns, test_doh_server};
+use commands::dns::{
+    clear_dns, clear_dns_cache, clear_dns_logs, delete_dns_rule, get_dns_logs, get_dns_rules,
+    get_interface_dns_info, save_dns_rule, set_dns, test_doh_server, toggle_dns_rule,
+};
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
 use tauri::RunEvent;
 use tauri::{Manager, WindowEvent};
-use tokio::sync::Mutex;
+use tokio::sync::{Mutex, RwLock};
 
 use crate::utils::clear_stale_doh_dns;
 
@@ -23,6 +32,20 @@ pub struct AppState {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let rules = Arc::new(RwLock::new(DnsRules::new()));
+
+    // DnsLogStore::new() spawns a tokio task, so we need a runtime.
+    // Tauri's setup hook runs inside a tokio context, so we defer creation there.
+    // Instead, we'll create the log store inside a runtime or pass a channel.
+    // Actually, the simplest approach: create a tokio runtime briefly for initialization,
+    // or restructure to create log store in setup. Let's use setup.
+
+    // We need the log_sender for DnsServer, but DnsLogStore needs tokio.
+    // Solution: create a channel pair manually, create DnsLogStore in setup.
+    let (log_sender, log_receiver) = tokio::sync::mpsc::unbounded_channel();
+
+    let rules_clone = rules.clone();
+
     tauri::Builder::default()
         .plugin(
             tauri_plugin_log::Builder::new()
@@ -49,7 +72,11 @@ pub fn run() {
                 }
             }
         }))
-        .plugin(tauri_plugin_window_state::Builder::new().build())
+        .plugin(
+            tauri_plugin_window_state::Builder::new()
+                .with_state_flags(StateFlags::POSITION)
+                .build(),
+        )
         .plugin(tauri_plugin_opener::init())
         .plugin(prevent_default())
         .invoke_handler(tauri::generate_handler![
@@ -61,14 +88,43 @@ pub fn run() {
             clear_dns_cache,
             test_doh_server,
             change_interface_state,
+            get_dns_logs,
+            clear_dns_logs,
+            get_dns_rules,
+            save_dns_rule,
+            delete_dns_rule,
+            toggle_dns_rule,
         ])
         .manage(Mutex::new(AppState {
-            dns_server: DnsServer::new(),
+            dns_server: DnsServer::new(log_sender, rules.clone()),
         }))
-        .setup(|_app| {
+        .manage(rules.clone())
+        .setup(move |app| {
             // Clean up stale DoH DNS (127.0.0.2) left over from a previous
             // run that didn't shut down cleanly (e.g. Windows shutdown/crash).
             clear_stale_doh_dns();
+
+            // Create and manage the log store, starting the receiver task
+            let log_store = DnsLogStore::from_receiver(log_receiver);
+            app.manage(log_store);
+
+            // Load persisted rules from store
+            let rules_for_setup = rules_clone.clone();
+            if let Ok(store) = app.store_builder("dns_rules.json").build() {
+                if let Some(rules_value) = store.get("rules") {
+                    if let Ok(persisted_rules) = serde_json::from_value::<Vec<DnsRule>>(rules_value)
+                    {
+                        info!("Loaded {} DNS rules from store", persisted_rules.len());
+                        // Use blocking since we're in setup (sync context)
+                        let rt = tokio::runtime::Handle::current();
+                        rt.block_on(async {
+                            let mut rules_guard = rules_for_setup.write().await;
+                            rules_guard.load_rules(persisted_rules);
+                        });
+                    }
+                }
+            }
+
             Ok(())
         })
         .build(tauri::generate_context!())

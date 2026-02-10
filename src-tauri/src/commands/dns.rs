@@ -1,9 +1,14 @@
+use crate::dns::dns_log_store::DnsLogStore;
+use crate::dns::dns_rules::DnsRules;
+use crate::dns::dns_types::{DnsQueryLog, DnsRule};
 use crate::dns::{dns_server, dns_utils};
 use crate::net_interfaces::general;
 use crate::types::DoHTestResult;
 use crate::AppState;
 use log::{debug, error, info};
-use tokio::sync::Mutex;
+use std::sync::Arc;
+use tauri_plugin_store::StoreExt;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{self, Duration, Instant};
 
 #[tauri::command(rename_all = "snake_case")]
@@ -130,4 +135,97 @@ pub async fn clear_dns(
 pub fn clear_dns_cache() -> Result<(), String> {
     let result = dns_utils::clear_dns_cache();
     return result;
+}
+
+// --- DNS Log commands ---
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_dns_logs(
+    log_store: tauri::State<'_, DnsLogStore>,
+    filter: Option<String>,
+    offset: Option<usize>,
+    limit: Option<usize>,
+) -> Result<Vec<DnsQueryLog>, String> {
+    Ok(log_store.get_logs(filter, offset, limit).await)
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn clear_dns_logs(log_store: tauri::State<'_, DnsLogStore>) -> Result<(), String> {
+    log_store.clear_logs().await;
+    Ok(())
+}
+
+// --- DNS Rule commands ---
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn get_dns_rules(
+    rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
+) -> Result<Vec<DnsRule>, String> {
+    let rules_guard = rules.read().await;
+    Ok(rules_guard.to_vec())
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn save_dns_rule(
+    app_handle: tauri::AppHandle,
+    rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
+    rule: DnsRule,
+) -> Result<(), String> {
+    {
+        let mut rules_guard = rules.write().await;
+        rules_guard.add_rule(rule);
+    }
+    persist_rules(&app_handle, &rules).await
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn delete_dns_rule(
+    app_handle: tauri::AppHandle,
+    rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
+    id: String,
+) -> Result<(), String> {
+    {
+        let mut rules_guard = rules.write().await;
+        rules_guard.remove_rule(&id);
+    }
+    persist_rules(&app_handle, &rules).await
+}
+
+#[tauri::command(rename_all = "snake_case")]
+pub async fn toggle_dns_rule(
+    app_handle: tauri::AppHandle,
+    rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
+    id: String,
+) -> Result<(), String> {
+    {
+        let mut rules_guard = rules.write().await;
+        rules_guard.toggle_rule(&id);
+    }
+    persist_rules(&app_handle, &rules).await
+}
+
+async fn persist_rules(
+    app_handle: &tauri::AppHandle,
+    rules: &Arc<RwLock<DnsRules>>,
+) -> Result<(), String> {
+    let rules_vec = {
+        let rules_guard = rules.read().await;
+        rules_guard.to_vec()
+    };
+
+    let store = app_handle
+        .store_builder("dns_rules.json")
+        .build()
+        .map_err(|e| format!("Failed to open rules store: {}", e))?;
+
+    let rules_json = serde_json::to_value(&rules_vec)
+        .map_err(|e| format!("Failed to serialize rules: {}", e))?;
+
+    store.set("rules", rules_json);
+    store
+        .save()
+        .map_err(|e| format!("Failed to save rules store: {}", e))?;
+
+    debug!("Persisted {} DNS rules", rules_vec.len());
+    Ok(())
 }

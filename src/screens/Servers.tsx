@@ -82,7 +82,7 @@ const Servers = () => {
 
     return (
         <div className="flex flex-col items-center justify-center h-full">
-            <div className="absolute left-20 min-w-[87%] max-w-[87%] max-h-108 min-h-108 bg-zinc-900/50 rounded-2xl   flex flex-col overflow-hidden gap-2 py-2">
+            <div className="absolute left-20  bg-zinc-900/50 rounded-2xl inner-container-size  flex flex-col overflow-hidden gap-2 py-2">
                 <div className="px-2 pl-4  flex items-center justify-between">
                     <div>
                         <span>Servers</span>

@@ -4,6 +4,7 @@ import DefaultLayout from "./layouts/DefaultLayout";
 import NetworkInterfaces from "./screens/NetworkInterfaces";
 import Servers from "./screens/Servers";
 import Setting from "./screens/Setting";
+import DnsActivity from "./screens/DnsActivity";
 
 export const router = createHashRouter([
     {
@@ -21,6 +22,10 @@ export const router = createHashRouter([
             {
                 path: "/network-interfaces",
                 element: <NetworkInterfaces />,
+            },
+            {
+                path: "/dns-activity",
+                element: <DnsActivity />,
             },
             {
                 path: "/settings",

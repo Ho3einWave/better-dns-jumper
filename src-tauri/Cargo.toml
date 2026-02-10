@@ -45,6 +45,7 @@ rustls-native-certs = "0.8.2"
 rustls = "0.23.32"
 url = "2.5.7"
 tokio-util = "0.7.15"
+chrono = { version = "0.4", features = ["serde"] }
 tauri-plugin-store = "2"
 tauri-plugin-prevent-default = "4"
 tauri-plugin-log = "2"

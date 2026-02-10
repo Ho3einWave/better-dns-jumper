@@ -6,6 +6,7 @@ import { Key, useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router";
 import { Lan } from "../components/icons/Lan";
 import { Server } from "./icons/Server";
+import { Activity } from "./icons/Activity";
 import { Update } from "./icons/Update";
 import { useUpdater } from "../hooks/useUpdater";
 
@@ -27,6 +28,12 @@ const TABS = [
         title: "Network Interfaces",
         icon: <Lan className="text-xl" />,
         path: "/network-interfaces",
+    },
+    {
+        key: "dns-activity",
+        title: "DNS Activity",
+        icon: <Activity className="text-xl" />,
+        path: "/dns-activity",
     },
     {
         key: "settings",

@@ -34,3 +34,7 @@ html {
 .inner-shadow-green-500 {
     box-shadow: inset 0 0 15px 0 rgba(0, 255, 0, 0.6);
 }
+
+.inner-container-size {
+    @apply max-h-[calc(100vh-45px)] min-w-[calc(100vw-90px)] min-h-[calc(100vh-45px)] max-w-[calc(100vw-90px)];
+}

@@ -27,7 +27,7 @@ const NetworkInterfaces = () => {
 
     const handleChangeInterfaceState = async (
         interfaceIdx: number,
-        enable: boolean
+        enable: boolean,
     ) => {
         addToast({
             title: "Changing interface state...",
@@ -38,7 +38,7 @@ const NetworkInterfaces = () => {
 
     const changeInterfaceStatePromise = async (
         interfaceIdx: number,
-        enable: boolean
+        enable: boolean,
     ) => {
         await changeInterfaceState({
             interface_idx: interfaceIdx,
@@ -88,12 +88,12 @@ const NetworkInterfaces = () => {
                 iface.adapter.description
                     ?.toLowerCase()
                     .includes(search.toLowerCase()) ||
-                iface.config.ip_address?.some((ip) => ip.includes(search))
+                iface.config.ip_address?.some((ip) => ip.includes(search)),
         );
 
     return (
         <div className="flex flex-col items-center justify-center h-full">
-            <div className="absolute left-20 min-w-[87%] max-w-[87%] max-h-108 min-h-108 bg-zinc-900/50 rounded-2xl flex flex-col gap-2 overflow-hidden px-2 py-2">
+            <div className="absolute left-20 inner-container-size bg-zinc-900/50 rounded-2xl flex flex-col gap-2 overflow-hidden px-2 py-2">
                 <div>
                     <Input
                         placeholder="Search name, description or IP"
@@ -115,7 +115,7 @@ const NetworkInterfaces = () => {
                                     <div className="flex items-center gap-1">
                                         <span className="text-xl">
                                             {getInterfaceIcon(
-                                                iface.adapter.description ?? ""
+                                                iface.adapter.description ?? "",
                                             )}
                                         </span>
                                         <span>{iface.adapter.name}</span>
@@ -141,7 +141,7 @@ const NetworkInterfaces = () => {
                                         onPress={() =>
                                             handleChangeInterfaceState(
                                                 iface.adapter.interface_index,
-                                                isDisabled
+                                                isDisabled,
                                             )
                                         }
                                         variant="flat"

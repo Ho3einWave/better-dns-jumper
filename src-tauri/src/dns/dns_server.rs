@@ -1,5 +1,6 @@
 use hickory_proto::op::{Header, ResponseCode};
-use hickory_proto::rr::{Record, RecordType};
+use hickory_proto::rr::rdata::{A, AAAA};
+use hickory_proto::rr::{Name, RData, Record, RecordType};
 use hickory_proto::runtime::TokioRuntimeProvider;
 use hickory_proto::xfer::Protocol;
 use hickory_resolver::config::{NameServerConfig, ResolverConfig, ResolverOpts};
@@ -10,25 +11,40 @@ use hickory_server::server::{
     Request, RequestHandler, ResponseHandler, ResponseInfo, ServerFuture,
 };
 use log::{debug, error, info};
-use std::net::ToSocketAddrs;
+use std::net::{Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use std::str::FromStr;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::net::UdpSocket;
-use tokio::sync::{oneshot, Mutex};
+use tokio::sync::{mpsc, oneshot, Mutex, RwLock};
+use tokio::time::Instant;
+
+use super::dns_rules::DnsRules;
+use super::dns_types::{DnsQueryLog, DnsQueryStatus};
 
 pub struct DnsServer {
     pub resolver: Option<TokioResolver>,
     pub server: Option<Arc<Mutex<ServerFuture<DnsResolver>>>>,
     pub socket: Option<UdpSocket>,
     pub shutdown_sender: Option<oneshot::Sender<()>>,
+    pub log_sender: Option<mpsc::UnboundedSender<DnsQueryLog>>,
+    pub rules: Arc<RwLock<DnsRules>>,
+    pub log_id_counter: Arc<AtomicU64>,
 }
 
 impl DnsServer {
-    pub fn new() -> Self {
+    pub fn new(
+        log_sender: mpsc::UnboundedSender<DnsQueryLog>,
+        rules: Arc<RwLock<DnsRules>>,
+    ) -> Self {
         Self {
             resolver: None,
             server: None,
             socket: None,
             shutdown_sender: None,
+            log_sender: Some(log_sender),
+            rules,
+            log_id_counter: Arc::new(AtomicU64::new(1)),
         }
     }
 
@@ -57,7 +73,14 @@ impl DnsServer {
 
         debug!("created socket: {:?}", socket);
 
-        let mut server = ServerFuture::new(DnsResolver::new(resolver));
+        let dns_resolver = DnsResolver::new(
+            resolver,
+            self.log_sender.clone(),
+            self.rules.clone(),
+            self.log_id_counter.clone(),
+        );
+
+        let mut server = ServerFuture::new(dns_resolver);
 
         debug!("created server");
 
@@ -176,11 +199,38 @@ impl DnsServer {
 
 pub struct DnsResolver {
     resolver: TokioResolver,
+    log_sender: Option<mpsc::UnboundedSender<DnsQueryLog>>,
+    rules: Arc<RwLock<DnsRules>>,
+    log_id_counter: Arc<AtomicU64>,
 }
 
 impl DnsResolver {
-    pub fn new(resolver: TokioResolver) -> Self {
-        Self { resolver }
+    pub fn new(
+        resolver: TokioResolver,
+        log_sender: Option<mpsc::UnboundedSender<DnsQueryLog>>,
+        rules: Arc<RwLock<DnsRules>>,
+        log_id_counter: Arc<AtomicU64>,
+    ) -> Self {
+        Self {
+            resolver,
+            log_sender,
+            rules,
+            log_id_counter,
+        }
+    }
+
+    fn next_log_id(&self) -> u64 {
+        self.log_id_counter.fetch_add(1, Ordering::Relaxed)
+    }
+
+    fn send_log(&self, log: DnsQueryLog) {
+        if let Some(ref sender) = self.log_sender {
+            let _ = sender.send(log);
+        }
+    }
+
+    fn record_type_str(rt: RecordType) -> String {
+        format!("{:?}", rt)
     }
 }
 
@@ -197,6 +247,86 @@ impl RequestHandler for DnsResolver {
             let record_type = query.query_type();
 
             debug!("Received query: {} {:?}", name, record_type);
+
+            // Strip trailing dot for matching
+            let domain_clean = name.trim_end_matches('.').to_lowercase();
+            let record_type_string = Self::record_type_str(record_type);
+
+            // Check rules before forwarding
+            {
+                let rules = self.rules.read().await;
+                if let Some(rule) = rules.match_domain(&domain_clean) {
+                    debug!("Rule matched for {}: -> {}", domain_clean, rule.response);
+
+                    // Build synthetic response based on record type
+                    let record_name = Name::from_ascii(&name).unwrap_or_default();
+                    let synthetic_record: Option<Record<RData>> = match record_type {
+                        RecordType::A => {
+                            if let Ok(ip) = Ipv4Addr::from_str(&rule.response) {
+                                Some(Record::from_rdata(record_name, 60, RData::A(A(ip))))
+                            } else {
+                                None
+                            }
+                        }
+                        RecordType::AAAA => {
+                            if let Ok(ip) = Ipv6Addr::from_str(&rule.response) {
+                                Some(Record::from_rdata(record_name, 60, RData::AAAA(AAAA(ip))))
+                            } else {
+                                // For AAAA queries with an IPv4 rule response, return empty (no records)
+                                None
+                            }
+                        }
+                        _ => None,
+                    };
+
+                    let response = MessageResponseBuilder::from_message_request(request);
+                    let mut header = Header::response_from_request(request.header());
+                    header.set_response_code(ResponseCode::NoError);
+
+                    let result = if let Some(ref rec) = synthetic_record {
+                        response_handle
+                            .send_response(response.build(
+                                header,
+                                std::iter::once(rec),
+                                &[],
+                                &[],
+                                &[],
+                            ))
+                            .await
+                    } else {
+                        response_handle
+                            .send_response(response.build_no_records(header))
+                            .await
+                    };
+
+                    // Log blocked entry
+                    self.send_log(DnsQueryLog {
+                        id: self.next_log_id(),
+                        timestamp: chrono::Utc::now().to_rfc3339(),
+                        domain: domain_clean.clone(),
+                        record_type: record_type_string,
+                        response_records: synthetic_record
+                            .as_ref()
+                            .map(|r| vec![r.data().to_string()])
+                            .unwrap_or_default(),
+                        latency_ms: 0,
+                        status: DnsQueryStatus::Blocked,
+                    });
+
+                    return match result {
+                        Err(e) => {
+                            error!("Error sending blocked response: {}", e);
+                            let mut err_header = Header::response_from_request(request.header());
+                            err_header.set_response_code(ResponseCode::ServFail);
+                            err_header.into()
+                        }
+                        Ok(info) => info,
+                    };
+                }
+            }
+
+            // No rule matched — forward to DoH resolver
+            let start = Instant::now();
 
             // Perform DNS lookup through DoH resolver and convert to Vec<Record>
             let records_result: Result<Vec<Record>, _> = match record_type {
@@ -232,21 +362,42 @@ impl RequestHandler for DnsResolver {
                 }
             };
 
+            let latency_ms = start.elapsed().as_millis() as u64;
+
             // Build response
             let response = MessageResponseBuilder::from_message_request(request);
             let mut header = Header::response_from_request(request.header());
 
-            let result = if let Ok(records) = records_result {
+            let (result, log_status, log_records) = if let Ok(ref records) = records_result {
                 header.set_response_code(ResponseCode::NoError);
-                response_handle
+                let response_records: Vec<String> =
+                    records.iter().map(|r| r.data().to_string()).collect();
+                let send_result = response_handle
                     .send_response(response.build(header, records.iter(), &[], &[], &[]))
-                    .await
+                    .await;
+                (send_result, DnsQueryStatus::Success, response_records)
             } else {
                 header.set_response_code(ResponseCode::ServFail);
-                response_handle
+                let send_result = response_handle
                     .send_response(response.build_no_records(header))
-                    .await
+                    .await;
+                (
+                    send_result,
+                    DnsQueryStatus::Error,
+                    vec![records_result.unwrap_err().to_string()],
+                )
             };
+
+            // Log the query
+            self.send_log(DnsQueryLog {
+                id: self.next_log_id(),
+                timestamp: chrono::Utc::now().to_rfc3339(),
+                domain: domain_clean,
+                record_type: record_type_string,
+                response_records: log_records,
+                latency_ms,
+                status: log_status,
+            });
 
             match result {
                 Err(e) => {

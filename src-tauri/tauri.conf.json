@@ -13,8 +13,8 @@
         "windows": [
             {
                 "title": "Better DNS Jumper",
-                "width": 700,
-                "height": 450,
+                "width": 850,
+                "height": 520,
                 "shadow": false,
                 "resizable": false,
                 "backgroundColor": "#09090b"

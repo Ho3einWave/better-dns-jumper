@@ -1,7 +1,15 @@
 {
   "permissions": {
     "allow": [
-      "Bash(cargo check:*)"
+      "Bash(cargo check:*)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run build:*)",
+      "WebFetch(domain:docs.rs)",
+      "WebSearch",
+      "WebFetch(domain:crates.io)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:lib.rs)"
     ]
   }
 }
