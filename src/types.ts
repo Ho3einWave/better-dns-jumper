@@ -4,6 +4,7 @@ export type SERVER = {
     name: string;
     servers: string[];
     tags: string[];
+    bootstrap_ips?: string[];
 };
 
 export type Protocol = {

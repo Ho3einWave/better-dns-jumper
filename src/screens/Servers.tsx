@@ -8,6 +8,8 @@ import ServerCard from "../components/ServerCard";
 import ConfirmModal from "../components/ConfirmModal";
 import { PROTOCOLS, type SERVER } from "../types";
 import { useTestServer, type ServerTestResult } from "../hooks/useDns";
+import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
+import { getBootstrapParams } from "../utils/bootstrap";
 
 const Servers = () => {
     const {
@@ -18,6 +20,7 @@ const Servers = () => {
         updateServer,
         resetServers,
     } = useServerStore();
+    const { data: bootstrapResolverKey } = useBootstrapResolverKey();
 
     const [activeTab, setActiveTab] = useState("all");
     const [searchQuery, setSearchQuery] = useState("");
@@ -114,9 +117,15 @@ const Servers = () => {
         // Test servers that haven't been tested yet
         serversToTest.forEach((server) => {
             if (!testResults.has(server.key)) {
+                const bootstrapParams = getBootstrapParams(
+                    server,
+                    servers,
+                    bootstrapResolverKey
+                );
                 testServer({
                     server: server.servers[0],
                     domain: "google.com",
+                    ...bootstrapParams,
                 });
             }
         });

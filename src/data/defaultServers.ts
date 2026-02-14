@@ -15,6 +15,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Cloudflare DoH",
         servers: ["https://cloudflare-dns.com/dns-query"],
         tags: ["Cloudflare", "Privacy"],
+        bootstrap_ips: ["1.1.1.1"],
     },
     {
         type: "dot",
@@ -22,6 +23,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Cloudflare DoT",
         servers: ["tls://one.one.one.one:853"],
         tags: ["Cloudflare", "Privacy"],
+        bootstrap_ips: ["1.1.1.1"],
     },
     {
         type: "doq",
@@ -29,6 +31,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Cloudflare DoQ",
         servers: ["quic://one.one.one.one:853"],
         tags: ["Cloudflare", "Privacy"],
+        bootstrap_ips: ["1.1.1.1"],
     },
     {
         type: "doh3",
@@ -36,6 +39,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Cloudflare DoH3",
         servers: ["h3://cloudflare-dns.com:443"],
         tags: ["Cloudflare", "Privacy"],
+        bootstrap_ips: ["1.1.1.1"],
     },
 
     // === Google ===
@@ -52,6 +56,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Google DoH",
         servers: ["https://dns.google/dns-query"],
         tags: ["Google", "General"],
+        bootstrap_ips: ["8.8.8.8"],
     },
     {
         type: "dot",
@@ -59,6 +64,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Google DoT",
         servers: ["tls://dns.google:853"],
         tags: ["Google", "General"],
+        bootstrap_ips: ["8.8.8.8"],
     },
 
     // === Quad9 ===
@@ -75,6 +81,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Quad9 DoH",
         servers: ["https://dns.quad9.net/dns-query"],
         tags: ["Quad9", "Security"],
+        bootstrap_ips: ["9.9.9.9"],
     },
     {
         type: "dot",
@@ -82,6 +89,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Quad9 DoT",
         servers: ["tls://dns.quad9.net:853"],
         tags: ["Quad9", "Security"],
+        bootstrap_ips: ["9.9.9.9"],
     },
     {
         type: "doq",
@@ -89,6 +97,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "Quad9 DoQ",
         servers: ["quic://dns.quad9.net:853"],
         tags: ["Quad9", "Security"],
+        bootstrap_ips: ["9.9.9.9"],
     },
 
     // === AdGuard ===
@@ -105,6 +114,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "AdGuard DoH",
         servers: ["https://dns.adguard-dns.com/dns-query"],
         tags: ["AdGuard", "AdBlock"],
+        bootstrap_ips: ["94.140.14.14"],
     },
     {
         type: "dot",
@@ -112,6 +122,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "AdGuard DoT",
         servers: ["tls://dns.adguard-dns.com:853"],
         tags: ["AdGuard", "AdBlock"],
+        bootstrap_ips: ["94.140.14.14"],
     },
     {
         type: "doq",
@@ -119,6 +130,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "AdGuard DoQ",
         servers: ["quic://dns.adguard-dns.com:853"],
         tags: ["AdGuard", "AdBlock"],
+        bootstrap_ips: ["94.140.14.14"],
     },
 
     // === ControlD (Free) ===
@@ -135,6 +147,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "ControlD DoH",
         servers: ["https://p2.freedns.controld.com/dns-query"],
         tags: ["ControlD", "Privacy"],
+        bootstrap_ips: ["76.76.2.0"],
     },
     {
         type: "dot",
@@ -142,6 +155,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "ControlD DoT",
         servers: ["tls://p2.freedns.controld.com:853"],
         tags: ["ControlD", "Privacy"],
+        bootstrap_ips: ["76.76.2.0"],
     },
     {
         type: "doq",
@@ -149,6 +163,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "ControlD DoQ",
         servers: ["quic://p2.freedns.controld.com:853"],
         tags: ["ControlD", "Privacy"],
+        bootstrap_ips: ["76.76.2.0"],
     },
     {
         type: "doh3",
@@ -156,6 +171,7 @@ export const DEFAULT_SERVERS: SERVER[] = [
         name: "ControlD DoH3",
         servers: ["h3://p2.freedns.controld.com:443"],
         tags: ["ControlD", "Privacy"],
+        bootstrap_ips: ["76.76.2.0"],
     },
 
     // === Regional / Niche ===

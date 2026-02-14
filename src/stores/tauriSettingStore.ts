@@ -7,7 +7,7 @@ async function getStore() {
     if (!storePromise) {
         storePromise = load("setting.json", {
             autoSave: true,
-            defaults: { test_domain: "youtube.com" },
+            defaults: { test_domain: "youtube.com", bootstrap_resolver_key: null },
         });
     }
     return storePromise;
@@ -50,5 +50,40 @@ export const useTestDomain = () => {
         isLoading: isLoadingTestDomain,
         mutate: saveTestDomainMutation,
         isSaving: isSavingTestDomain,
+    };
+};
+
+export async function loadBootstrapResolverKey(): Promise<string | null> {
+    const store = await getStore();
+    const key = await store.get<string | null>("bootstrap_resolver_key");
+    return key ?? null;
+}
+
+export async function saveBootstrapResolverKey(key: string | null) {
+    const store = await getStore();
+    await store.set("bootstrap_resolver_key", key);
+    await store.save();
+}
+
+export const useBootstrapResolverKey = () => {
+    const queryClient = useQueryClient();
+    const { data: bootstrapResolverKey, isLoading: isLoadingBootstrapResolverKey } = useQuery({
+        queryKey: ["bootstrap_resolver_key"],
+        queryFn: loadBootstrapResolverKey,
+    });
+
+    const { mutate: saveBootstrapResolverKeyMutation, isPending: isSavingBootstrapResolverKey } =
+        useMutation({
+            mutationFn: (key: string | null) => saveBootstrapResolverKey(key),
+            onSuccess: () => {
+                queryClient.invalidateQueries({ queryKey: ["bootstrap_resolver_key"] });
+            },
+        });
+
+    return {
+        data: bootstrapResolverKey ?? null,
+        isLoading: isLoadingBootstrapResolverKey,
+        mutate: saveBootstrapResolverKeyMutation,
+        isSaving: isSavingBootstrapResolverKey,
     };
 };

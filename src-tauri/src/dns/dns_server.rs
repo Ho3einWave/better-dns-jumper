@@ -11,13 +11,19 @@ use hickory_server::server::{
     Request, RequestHandler, ResponseHandler, ResponseInfo, ServerFuture,
 };
 use log::{debug, error, info};
-use std::net::{Ipv4Addr, Ipv6Addr, ToSocketAddrs};
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use tokio::net::UdpSocket;
 use tokio::sync::{mpsc, oneshot, Mutex, RwLock};
 use tokio::time::Instant;
+
+#[derive(Debug, serde::Deserialize)]
+pub struct BootstrapResolverInfo {
+    pub server: String,
+    pub bootstrap_ip: Option<String>,
+}
 
 use super::dns_rules::DnsRules;
 use super::dns_types::{DnsQueryLog, DnsQueryStatus};
@@ -48,11 +54,25 @@ impl DnsServer {
         }
     }
 
-    pub async fn run(&mut self, server: String) -> Result<(), String> {
+    pub async fn run(
+        &mut self,
+        server: String,
+        bootstrap_ip: Option<String>,
+        bootstrap_resolver: Option<BootstrapResolverInfo>,
+    ) -> Result<(), String> {
         let (domain, port, proto, http_endpoint) = Self::parse_server_url(&server)?;
 
+        // Priority: bootstrap_ip > bootstrap_resolver > system DNS
+        let effective_bootstrap_ip = if bootstrap_ip.is_some() {
+            bootstrap_ip
+        } else if let Some(ref resolver_info) = bootstrap_resolver {
+            Some(Self::resolve_via_bootstrap(resolver_info, &domain).await?)
+        } else {
+            None
+        };
+
         let resolver =
-            DnsServer::create_dns_resolver(domain, port, proto, http_endpoint)
+            DnsServer::create_dns_resolver(domain, port, proto, http_endpoint, effective_bootstrap_ip)
                 .map_err(|e| {
                     error!("Failed to create DNS resolver: {}", e);
                     format!("Failed to create DNS resolver: {}", e)
@@ -182,16 +202,23 @@ impl DnsServer {
         port: u16,
         protocol: Protocol,
         http_endpoint: Option<String>,
+        bootstrap_ip: Option<String>,
     ) -> Result<TokioResolver, String> {
         let mut config = ResolverConfig::new();
 
-        let mut socket_addr = (domain.clone(), port)
-            .to_socket_addrs()
-            .map_err(|e| format!("Failed to resolve domain: {}", e))?;
-
-        let socket_addr = socket_addr
-            .next()
-            .ok_or(format!("Failed to resolve domain: {}", &domain))?;
+        let socket_addr = if let Some(ref ip_str) = bootstrap_ip {
+            let ip: IpAddr = ip_str
+                .parse()
+                .map_err(|e| format!("Failed to parse bootstrap IP '{}': {}", ip_str, e))?;
+            SocketAddr::new(ip, port)
+        } else {
+            let mut addrs = (domain.clone(), port)
+                .to_socket_addrs()
+                .map_err(|e| format!("Failed to resolve domain: {}", e))?;
+            addrs
+                .next()
+                .ok_or(format!("Failed to resolve domain: {}", &domain))?
+        };
 
         info!("DNS Server Resolved: {:?} (protocol: {:?})", socket_addr, protocol);
 
@@ -218,6 +245,62 @@ impl DnsServer {
             .build();
 
         Ok(resolver)
+    }
+
+    /// Resolve a domain using a bootstrap resolver (either plain DNS IP or DoH URL with its own bootstrap IP).
+    pub async fn resolve_via_bootstrap(
+        bootstrap: &BootstrapResolverInfo,
+        domain: &str,
+    ) -> Result<String, String> {
+        let is_plain_ip = bootstrap.server.parse::<IpAddr>().is_ok();
+
+        let resolver = if is_plain_ip {
+            let ip: IpAddr = bootstrap
+                .server
+                .parse()
+                .map_err(|e| format!("Failed to parse bootstrap IP: {}", e))?;
+            let socket_addr = SocketAddr::new(ip, 53);
+
+            let mut config = ResolverConfig::new();
+            config.add_name_server(NameServerConfig {
+                socket_addr,
+                protocol: Protocol::Udp,
+                tls_dns_name: None,
+                http_endpoint: None,
+                bind_addr: None,
+                trust_negative_responses: true,
+            });
+
+            let opts = ResolverOpts::default();
+            let connector = GenericConnector::<TokioRuntimeProvider>::default();
+
+            Resolver::builder_with_config(config, connector)
+                .with_options(opts)
+                .build()
+        } else {
+            let (resolver_domain, port, proto, http_endpoint) =
+                Self::parse_server_url(&bootstrap.server)?;
+            Self::create_dns_resolver(
+                resolver_domain,
+                port,
+                proto,
+                http_endpoint,
+                bootstrap.bootstrap_ip.clone(),
+            )?
+        };
+
+        let lookup = resolver
+            .lookup_ip(domain)
+            .await
+            .map_err(|e| format!("Bootstrap resolution failed for '{}': {}", domain, e))?;
+
+        let ip = lookup
+            .iter()
+            .next()
+            .ok_or(format!("Bootstrap resolver returned no IPs for '{}'", domain))?;
+
+        info!("Bootstrap resolved '{}' to {}", domain, ip);
+        Ok(ip.to_string())
     }
 
     pub async fn create_udp_socket(&self) -> Result<UdpSocket, String> {

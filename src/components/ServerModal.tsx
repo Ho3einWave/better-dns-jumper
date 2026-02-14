@@ -180,6 +180,7 @@ const ServerModal = ({
         hostname: string;
         port: string;
         tags: string[];
+        bootstrapIp: string;
     }>({
         type: "dns",
         key: "",
@@ -188,6 +189,7 @@ const ServerModal = ({
         hostname: "",
         port: "",
         tags: [],
+        bootstrapIp: "",
     });
 
     const [tagInput, setTagInput] = useState("");
@@ -195,6 +197,7 @@ const ServerModal = ({
     const [hostnameError, setHostnameError] = useState<string>("");
     const [portError, setPortError] = useState<string>("");
     const [duplicateError, setDuplicateError] = useState<string>("");
+    const [bootstrapIpError, setBootstrapIpError] = useState<string>("");
 
     // Get protocol metadata for the current type
     const currentProtocol = useMemo(() => {
@@ -244,12 +247,14 @@ const ServerModal = ({
                     hostname: hostnameValue,
                     port: portValue,
                     tags: [...server.tags],
+                    bootstrapIp: server.bootstrap_ips?.[0] ?? "",
                 });
                 setTagInput("");
                 setServerErrors([]);
                 setHostnameError("");
                 setPortError("");
                 setDuplicateError("");
+                setBootstrapIpError("");
             } else {
                 setFormData({
                     type: "dns",
@@ -259,12 +264,14 @@ const ServerModal = ({
                     hostname: "",
                     port: "",
                     tags: [],
+                    bootstrapIp: "",
                 });
                 setTagInput("");
                 setServerErrors([]);
                 setHostnameError("");
                 setPortError("");
                 setDuplicateError("");
+                setBootstrapIpError("");
             }
         }
     }, [isOpen, mode, server]);
@@ -305,10 +312,12 @@ const ServerModal = ({
             hostname: "",
             port: getDefaultPort(type),
             servers: "",
+            bootstrapIp: "",
         });
         setServerErrors([]);
         setHostnameError("");
         setPortError("");
+        setBootstrapIpError("");
     };
 
     const runCombinedValidation = (hostname: string, port: string) => {
@@ -439,12 +448,21 @@ const ServerModal = ({
             return;
         }
 
+        // Validate bootstrap IP if provided
+        if (formData.bootstrapIp.trim() && !isValidIP(formData.bootstrapIp)) {
+            setBootstrapIpError("Must be a valid IPv4 address");
+            return;
+        }
+
         const serverData: SERVER = {
             type: formData.type,
             key: finalKey.trim(),
             name: formData.name.trim(),
             servers: serverList,
             tags: formData.tags,
+            ...(formData.bootstrapIp.trim()
+                ? { bootstrap_ips: [formData.bootstrapIp.trim()] }
+                : {}),
         };
 
         if (
@@ -576,6 +594,31 @@ const ServerModal = ({
                                     {serverErrors.join(", ")}
                                 </p>
                             )}
+                        {formData.type !== "dns" && (
+                            <Input
+                                radius="lg"
+                                label="Server IP (optional)"
+                                value={formData.bootstrapIp}
+                                onValueChange={(value) => {
+                                    setFormData({
+                                        ...formData,
+                                        bootstrapIp: value,
+                                    });
+                                    if (value.trim() && !isValidIP(value)) {
+                                        setBootstrapIpError(
+                                            "Must be a valid IPv4 address"
+                                        );
+                                    } else {
+                                        setBootstrapIpError("");
+                                    }
+                                }}
+                                size="sm"
+                                placeholder="e.g., 1.1.1.1"
+                                description="IP address to connect directly, bypassing DNS resolution"
+                                isInvalid={!!bootstrapIpError}
+                                errorMessage={bootstrapIpError}
+                            />
+                        )}
                         {/* Chip-based tags input */}
                         <div>
                             <div className="flex flex-wrap gap-1 items-center bg-zinc-800/50 rounded-xl p-2 min-h-10 border-1 border-zinc-700 focus-within:border-zinc-500 transition-colors">

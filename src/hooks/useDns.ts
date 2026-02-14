@@ -3,6 +3,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { loadTestDomain } from "../stores/tauriSettingStore";
 import { DEFAULT_SETTING } from "../data/defaultSetting";
 
+export type BootstrapResolverInfo = {
+    server: string;
+    bootstrap_ip?: string;
+};
+
 export const useSetDns = (
     params?: MutationOptions<
         void,
@@ -11,6 +16,8 @@ export const useSetDns = (
             path: string;
             dns_servers: string[];
             dns_type: "doh" | "dns" | "dot" | "doq" | "doh3";
+            bootstrap_ip?: string;
+            bootstrap_resolver?: BootstrapResolverInfo;
         }
     >
 ) => {
@@ -19,6 +26,8 @@ export const useSetDns = (
             path: string;
             dns_servers: string[];
             dns_type: "doh" | "dns" | "dot" | "doq" | "doh3";
+            bootstrap_ip?: string;
+            bootstrap_resolver?: BootstrapResolverInfo;
         }) => {
             return invoke<void>("set_dns", params);
         },
@@ -66,11 +75,21 @@ export const useTestServer = (
     params?: MutationOptions<
         ServerTestResult,
         Error,
-        { server: string; domain: string }
+        {
+            server: string;
+            domain: string;
+            bootstrap_ip?: string;
+            bootstrap_resolver?: BootstrapResolverInfo;
+        }
     >
 ) => {
     return useMutation({
-        mutationFn: async (params: { server: string; domain: string }) => {
+        mutationFn: async (params: {
+            server: string;
+            domain: string;
+            bootstrap_ip?: string;
+            bootstrap_resolver?: BootstrapResolverInfo;
+        }) => {
             const testDomain = await loadTestDomain();
             return invoke<ServerTestResult>("test_server", {
                 ...params,

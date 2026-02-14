@@ -23,9 +23,12 @@ import { Test } from "../components/icons/Test";
 import { PROTOCOLS, SERVER } from "../types";
 import { useServerStore } from "../stores/useServersStore";
 import { useDnsState } from "../hooks/useDnsState";
+import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
+import { getBootstrapParams } from "../utils/bootstrap";
 
 const Main = () => {
     const { servers, isLoading: isLoadingServers, load } = useServerStore();
+    const { data: bootstrapResolverKey } = useBootstrapResolverKey();
 
     const {
         isActive,
@@ -134,9 +137,15 @@ const Main = () => {
 
             // Test all servers — for plain DNS, pass the first IP; for others, pass the URL
             protocolServers.forEach((server) => {
+                const bootstrapParams = getBootstrapParams(
+                    server,
+                    servers,
+                    bootstrapResolverKey
+                );
                 testServer({
                     server: server.servers[0],
                     domain: "google.com",
+                    ...bootstrapParams,
                 });
             });
         }
@@ -214,10 +223,16 @@ const Main = () => {
     };
     const handleSetDns = () => {
         if (!dnsServerData) return;
+        const bootstrapParams = getBootstrapParams(
+            dnsServerData,
+            servers,
+            bootstrapResolverKey
+        );
         setDns({
             path: interfaceDnsInfo?.path ?? "",
             dns_servers: dnsServerData?.servers,
             dns_type: dnsServerData?.type,
+            ...bootstrapParams,
         });
     };
     const handleClearDns = () => {
@@ -246,9 +261,16 @@ const Main = () => {
     };
 
     const handleTestServer = () => {
+        if (!dnsServerData) return;
+        const bootstrapParams = getBootstrapParams(
+            dnsServerData,
+            servers,
+            bootstrapResolverKey
+        );
         testServer({
-            server: dnsServerData?.servers[0] ?? "",
+            server: dnsServerData.servers[0] ?? "",
             domain: "google.com",
+            ...bootstrapParams,
         });
     };
 

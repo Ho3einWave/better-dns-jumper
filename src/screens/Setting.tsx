@@ -2,6 +2,7 @@ import { Switch } from "@heroui/switch";
 import { useAutoStartStore } from "../stores/useAutoStartStore";
 import { useEffect } from "react";
 import TestDomain from "../components/Setting/TestDomain";
+import BootstrapResolver from "../components/Setting/BootstrapResolver";
 
 const Setting = () => {
     const { isAutoStartEnabled, isLoading, setIsAutoStartEnabled, load } =
@@ -40,6 +41,7 @@ const Setting = () => {
                         />
                     </div>
                     <TestDomain />
+                    <BootstrapResolver />
                 </div>
             </div>
         </div>

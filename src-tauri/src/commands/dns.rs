@@ -12,7 +12,12 @@ use tokio::sync::{Mutex, RwLock};
 use tokio::time::{self, Duration, Instant};
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn test_server(server: String, domain: String) -> Result<ServerTestResult, String> {
+pub async fn test_server(
+    server: String,
+    domain: String,
+    bootstrap_ip: Option<String>,
+    bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
+) -> Result<ServerTestResult, String> {
     use hickory_proto::xfer::Protocol;
     use std::net::SocketAddr;
 
@@ -49,11 +54,29 @@ pub async fn test_server(server: String, domain: String) -> Result<ServerTestRes
         let (resolver_domain, port, proto, http_endpoint) =
             dns_server::DnsServer::parse_server_url(&server)?;
 
-        dns_server::DnsServer::create_dns_resolver(resolver_domain, port, proto, http_endpoint)
-            .map_err(|e| {
-                error!("Failed to create DNS resolver: {:?}", e);
-                format!("Failed to create DNS resolver: {:?}", e)
-            })?
+        // Priority: bootstrap_ip > bootstrap_resolver > system DNS
+        let effective_ip = if bootstrap_ip.is_some() {
+            bootstrap_ip
+        } else if let Some(ref resolver_info) = bootstrap_resolver {
+            Some(
+                dns_server::DnsServer::resolve_via_bootstrap(resolver_info, &resolver_domain)
+                    .await?,
+            )
+        } else {
+            None
+        };
+
+        dns_server::DnsServer::create_dns_resolver(
+            resolver_domain,
+            port,
+            proto,
+            http_endpoint,
+            effective_ip,
+        )
+        .map_err(|e| {
+            error!("Failed to create DNS resolver: {:?}", e);
+            format!("Failed to create DNS resolver: {:?}", e)
+        })?
     };
 
     let timeout = Duration::from_secs(3);
@@ -111,6 +134,8 @@ pub async fn set_dns(
     path: String,
     dns_servers: Vec<String>,
     dns_type: String,
+    bootstrap_ip: Option<String>,
+    bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
 ) -> Result<(), String> {
     debug!(
         "path: {}, dns_servers: {:?}, dns_type: {}",
@@ -118,7 +143,10 @@ pub async fn set_dns(
     );
     if dns_type == "doh" || dns_type == "dot" || dns_type == "doq" || dns_type == "doh3" {
         let mut app_state = app_state.lock().await;
-        app_state.dns_server.run(dns_servers[0].to_string()).await?;
+        app_state
+            .dns_server
+            .run(dns_servers[0].to_string(), bootstrap_ip, bootstrap_resolver)
+            .await?;
 
         dns_utils::apply_dns_by_path(path, vec!["127.0.0.2".to_string()])
             .map_err(|e| format!("Failed to apply dns by path: {}", e))?;
