@@ -1,6 +1,7 @@
 mod commands;
 mod dns;
 mod error;
+mod logging;
 mod net_interfaces;
 mod types;
 mod utils;
@@ -11,12 +12,11 @@ use dns::dns_rules::DnsRules;
 use dns::dns_server::DnsServer;
 use dns::dns_types::DnsRule;
 use log::{debug, error, info};
-use std::env::temp_dir;
 use std::sync::Arc;
-use tauri_plugin_log::TargetKind;
 use tauri_plugin_store::StoreExt;
 use tauri_plugin_window_state::StateFlags;
 
+use commands::app_logs::{clear_app_logs, get_app_logs, get_log_file_path, open_log_dir};
 use commands::dns::{
     clear_dns, clear_dns_cache, clear_dns_logs, delete_dns_rule, get_dns_logs, get_dns_rules,
     get_interface_dns_info, save_dns_rule, set_dns, test_server, toggle_dns_rule,
@@ -49,16 +49,7 @@ pub fn run() {
     let rules_clone = rules.clone();
 
     tauri::Builder::default()
-        .plugin(
-            tauri_plugin_log::Builder::new()
-                .target(tauri_plugin_log::Target::new(TargetKind::Folder {
-                    path: temp_dir().join("better-dns-jumper"),
-                    file_name: Some("better-dns-jumper".to_string()),
-                }))
-                .max_file_size(1024 * 1024 * 10) // 10MB
-                .filter(|metadata| metadata.target().contains("better_dns_jumper_lib"))
-                .build(),
-        )
+        .plugin(logging::plugin())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_autostart::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
@@ -96,12 +87,22 @@ pub fn run() {
             save_dns_rule,
             delete_dns_rule,
             toggle_dns_rule,
+            get_app_logs,
+            clear_app_logs,
+            get_log_file_path,
+            open_log_dir,
         ])
         .manage(Mutex::new(AppState {
             dns_server: DnsServer::new(log_sender, rules.clone()),
         }))
         .manage(rules.clone())
         .setup(move |app| {
+            info!(
+                "Better DNS Jumper {} starting — logging to {}",
+                env!("CARGO_PKG_VERSION"),
+                logging::log_file().display()
+            );
+
             // Clean up stale DoH DNS (127.0.0.2) left over from a previous
             // run that didn't shut down cleanly (e.g. Windows shutdown/crash).
             clear_stale_doh_dns();

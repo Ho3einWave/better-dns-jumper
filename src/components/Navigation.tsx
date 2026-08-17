@@ -7,6 +7,7 @@ import { useNavigate, useLocation } from "react-router";
 import { Lan } from "../components/icons/Lan";
 import { Server } from "./icons/Server";
 import { Activity } from "./icons/Activity";
+import { Logs } from "./icons/Logs";
 import { Update } from "./icons/Update";
 import { useUpdater } from "../hooks/useUpdater";
 
@@ -34,6 +35,12 @@ const TABS = [
         title: "DNS Activity",
         icon: <Activity className="text-xl" />,
         path: "/dns-activity",
+    },
+    {
+        key: "logs",
+        title: "Application Logs",
+        icon: <Logs className="text-xl" />,
+        path: "/logs",
     },
     {
         key: "settings",

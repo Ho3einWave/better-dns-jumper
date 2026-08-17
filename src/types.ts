@@ -69,3 +69,16 @@ export type DnsRule = {
     enabled: boolean;
     record_type: string;
 };
+
+export type LogLevel = "ERROR" | "WARN" | "INFO" | "DEBUG" | "TRACE";
+
+export const LOG_LEVELS: LogLevel[] = ["ERROR", "WARN", "INFO", "DEBUG", "TRACE"];
+
+/** One parsed line from the application log file. Mirrors the Rust `AppLogEntry`. */
+export type AppLogEntry = {
+    id: number;
+    timestamp: string;
+    level: LogLevel | string;
+    target: string;
+    message: string;
+};
