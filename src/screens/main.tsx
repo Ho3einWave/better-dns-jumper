@@ -229,7 +229,7 @@ const Main = () => {
             bootstrapResolverKey
         );
         setDns({
-            path: interfaceDnsInfo?.path ?? "",
+            interface_index: IfIdx ?? 0,
             dns_servers: dnsServerData?.servers,
             dns_type: dnsServerData?.type,
             ...bootstrapParams,
@@ -237,7 +237,7 @@ const Main = () => {
     };
     const handleClearDns = () => {
         clearDns({
-            path: interfaceDnsInfo?.path ?? "",
+            interface_index: IfIdx ?? 0,
         });
     };
 
@@ -256,7 +256,7 @@ const Main = () => {
 
     const handleResetDns = () => {
         clearDns({
-            path: interfaceDnsInfo?.path ?? "",
+            interface_index: IfIdx ?? 0,
         });
     };
 
@@ -285,14 +285,10 @@ const Main = () => {
                     aria-labelledby="Interface"
                     items={[
                         {
-                            adapter: {
-                                index: 0,
-                                name: "Auto",
-                                interface_index: 0,
-                                mac_address: null,
-                                addrs: [],
-                            },
-                            config: {},
+                            interface_index: 0,
+                            name: "Auto",
+                            mac_address: null,
+                            ip_addresses: [],
                         },
                         ...(interfaces ?? []),
                     ]}
@@ -304,19 +300,19 @@ const Main = () => {
                         setIfIdx(parseInt(keys.currentKey as string))
                     }
                     startContent={<Network className="text-2xl" />}
-                    isDisabled={!interfaceDnsInfo?.path || isActive}
+                    isDisabled={!interfaceDnsInfo || isActive}
                 >
                     {(items) => (
                         <SelectItem
-                            key={items.adapter.interface_index}
-                            textValue={items.adapter.name ?? ""}
+                            key={items.interface_index}
+                            textValue={items.name ?? ""}
                         >
                             <div className="flex gap-1 items-center ">
-                                <div>{items.adapter.name}</div>
+                                <div>{items.name}</div>
                                 <div className="text-xs text-zinc-400">
-                                    {items.adapter.interface_index === 0
+                                    {items.interface_index === 0
                                         ? interfaceDnsInfo?.interface_name
-                                        : `#${items.adapter.interface_index}`}
+                                        : `#${items.interface_index}`}
                                 </div>
                             </div>
                         </SelectItem>
@@ -335,7 +331,7 @@ const Main = () => {
                     maxListboxHeight={200}
                     startContent={<DNSServer className="text-2xl" />}
                     isDisabled={
-                        !interfaceDnsInfo?.path || isActive || isLoadingServers
+                        !interfaceDnsInfo || isActive || isLoadingServers
                     }
                     isLoading={isLoadingServers}
                 >
@@ -412,7 +408,7 @@ const Main = () => {
                     }}
                     color="primary"
                     isDisabled={
-                        !interfaceDnsInfo?.path || isActive || isLoadingServers
+                        !interfaceDnsInfo || isActive || isLoadingServers
                     }
                 >
                     {PROTOCOLS.map((protocol) => (

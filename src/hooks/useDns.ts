@@ -13,7 +13,7 @@ export const useSetDns = (
         void,
         Error,
         {
-            path: string;
+            interface_index: number;
             dns_servers: string[];
             dns_type: "doh" | "dns" | "dot" | "doq" | "doh3";
             bootstrap_ip?: string;
@@ -23,7 +23,7 @@ export const useSetDns = (
 ) => {
     return useMutation({
         mutationFn: (params: {
-            path: string;
+            interface_index: number;
             dns_servers: string[];
             dns_type: "doh" | "dns" | "dot" | "doq" | "doh3";
             bootstrap_ip?: string;
@@ -36,10 +36,10 @@ export const useSetDns = (
 };
 
 export const useClearDns = (
-    params?: MutationOptions<void, Error, { path: string }>
+    params?: MutationOptions<void, Error, { interface_index: number }>
 ) => {
     return useMutation({
-        mutationFn: (params: { path: string }) => {
+        mutationFn: (params: { interface_index: number }) => {
             return invoke<void>("clear_dns", params);
         },
 
@@ -110,5 +110,4 @@ export type InterfaceDnsInfo = {
     interface_index: number;
     dns_servers: string[];
     interface_name: string;
-    path: string | null;
 };

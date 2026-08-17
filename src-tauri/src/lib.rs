@@ -3,6 +3,7 @@ mod dns;
 mod net_interfaces;
 mod types;
 mod utils;
+mod win;
 
 use dns::dns_log_store::DnsLogStore;
 use dns::dns_rules::DnsRules;
@@ -24,7 +25,7 @@ use tauri::RunEvent;
 use tauri::{Manager, WindowEvent};
 use tokio::sync::{Mutex, RwLock};
 
-use crate::utils::clear_stale_doh_dns;
+use crate::win::clear_stale_doh_dns;
 
 pub struct AppState {
     pub dns_server: DnsServer,

@@ -10,7 +10,7 @@ use hickory_server::authority::MessageResponseBuilder;
 use hickory_server::server::{
     Request, RequestHandler, ResponseHandler, ResponseInfo, ServerFuture,
 };
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -54,12 +54,17 @@ impl DnsServer {
         }
     }
 
+    /// Starts the proxy and returns whether it managed to bind the IPv6 loopback
+    /// socket (`[::1]:53`). The IPv4 socket (`127.0.0.2:53`) is required — a failure
+    /// there fails the whole call, matching the previous behavior. IPv6 is
+    /// best-effort: callers must not point IPv6 DNS at `::1` unless this returns
+    /// `true`, or IPv6 queries would go to a port nothing is listening on.
     pub async fn run(
         &mut self,
         server: String,
         bootstrap_ip: Option<String>,
         bootstrap_resolver: Option<BootstrapResolverInfo>,
-    ) -> Result<(), String> {
+    ) -> Result<bool, String> {
         let (domain, port, proto, http_endpoint) = Self::parse_server_url(&server)?;
 
         // Priority: bootstrap_ip > bootstrap_resolver > system DNS
@@ -71,16 +76,21 @@ impl DnsServer {
             None
         };
 
-        let resolver =
-            DnsServer::create_dns_resolver(domain, port, proto, http_endpoint, effective_bootstrap_ip)
-                .map_err(|e| {
-                    error!("Failed to create DNS resolver: {}", e);
-                    format!("Failed to create DNS resolver: {}", e)
-                })?;
+        let resolver = DnsServer::create_dns_resolver(
+            domain,
+            port,
+            proto,
+            http_endpoint,
+            effective_bootstrap_ip,
+        )
+        .map_err(|e| {
+            error!("Failed to create DNS resolver: {}", e);
+            format!("Failed to create DNS resolver: {}", e)
+        })?;
 
-        let socket = self.create_udp_socket().await?;
+        let socket_v4 = self.create_udp_socket().await?;
 
-        debug!("created socket: {:?}", socket);
+        debug!("created socket: {:?}", socket_v4);
 
         let dns_resolver = DnsResolver::new(
             resolver,
@@ -93,7 +103,23 @@ impl DnsServer {
 
         debug!("created server");
 
-        server.register_socket(socket);
+        server.register_socket(socket_v4);
+
+        // Best-effort: without this, IPv6 DNS can never be safely redirected to the
+        // proxy, which is the root of the IPv6 DNS leak (see WMI_MIGRATION_PLAN.md).
+        let ipv6_ready = match UdpSocket::bind((crate::win::PROXY_V6, 53)).await {
+            Ok(socket_v6) => {
+                server.register_socket(socket_v6);
+                true
+            }
+            Err(e) => {
+                warn!(
+                    "Could not bind [::1]:53 — IPv6 DNS queries will not be redirected: {}",
+                    e
+                );
+                false
+            }
+        };
 
         let server = Arc::new(Mutex::new(server));
         self.server = Some(server.clone());
@@ -134,7 +160,7 @@ impl DnsServer {
 
         debug!("registered socket");
 
-        Ok(())
+        Ok(ipv6_ready)
     }
 
     pub async fn shutdown(&mut self) -> Result<(), String> {
@@ -156,15 +182,14 @@ impl DnsServer {
 
     /// Parse a server URL string into (domain, port, protocol, http_endpoint).
     /// Supported schemes: https://, tls://, quic://, h3://
-    pub fn parse_server_url(server: &str) -> Result<(String, u16, Protocol, Option<String>), String> {
+    pub fn parse_server_url(
+        server: &str,
+    ) -> Result<(String, u16, Protocol, Option<String>), String> {
         let server_url =
             url::Url::parse(server).map_err(|e| format!("Failed to parse server: {}", e))?;
 
         let scheme = server_url.scheme();
-        let domain = server_url
-            .host()
-            .ok_or("Failed to get domain")?
-            .to_string();
+        let domain = server_url.host().ok_or("Failed to get domain")?.to_string();
 
         match scheme {
             "https" => {
@@ -220,7 +245,10 @@ impl DnsServer {
                 .ok_or(format!("Failed to resolve domain: {}", &domain))?
         };
 
-        info!("DNS Server Resolved: {:?} (protocol: {:?})", socket_addr, protocol);
+        info!(
+            "DNS Server Resolved: {:?} (protocol: {:?})",
+            socket_addr, protocol
+        );
 
         let tls_dns_name = match protocol {
             Protocol::Udp | Protocol::Tcp => None,
@@ -294,17 +322,17 @@ impl DnsServer {
             .await
             .map_err(|e| format!("Bootstrap resolution failed for '{}': {}", domain, e))?;
 
-        let ip = lookup
-            .iter()
-            .next()
-            .ok_or(format!("Bootstrap resolver returned no IPs for '{}'", domain))?;
+        let ip = lookup.iter().next().ok_or(format!(
+            "Bootstrap resolver returned no IPs for '{}'",
+            domain
+        ))?;
 
         info!("Bootstrap resolved '{}' to {}", domain, ip);
         Ok(ip.to_string())
     }
 
     pub async fn create_udp_socket(&self) -> Result<UdpSocket, String> {
-        let socket = UdpSocket::bind("127.0.0.2:53")
+        let socket = UdpSocket::bind((crate::win::PROXY_V4, 53))
             .await
             .map_err(|e| format!("Failed to create UDP socket: {}", e))?;
 

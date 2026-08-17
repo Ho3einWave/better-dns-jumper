@@ -2,10 +2,12 @@ use crate::dns::dns_log_store::DnsLogStore;
 use crate::dns::dns_rules::DnsRules;
 use crate::dns::dns_types::{DnsQueryLog, DnsRule};
 use crate::dns::{dns_server, dns_utils};
-use crate::net_interfaces::general;
 use crate::types::ServerTestResult;
+use crate::win;
+use crate::win::dns_settings::Family;
 use crate::AppState;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
+use std::net::IpAddr;
 use std::sync::Arc;
 use tauri_plugin_store::StoreExt;
 use tokio::sync::{Mutex, RwLock};
@@ -119,62 +121,170 @@ pub async fn test_server(
 
 #[tauri::command(rename_all = "snake_case")]
 pub fn get_interface_dns_info(interface_idx: u32) -> Result<dns_utils::InterfaceDnsInfo, String> {
-    let interface_idx = match interface_idx {
-        0 => general::get_best_interface_idx()
-            .map_err(|e| format!("Failed to get best interface index: {}", e))?,
-        _ => interface_idx,
-    };
-    let result = dns_utils::get_interface_dns_info(interface_idx);
-    return result;
+    let interface_idx = win::adapters::resolve_interface_index(interface_idx)?;
+    dns_utils::get_interface_dns_info(interface_idx)
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn set_dns(
     app_state: tauri::State<'_, Mutex<AppState>>,
-    path: String,
+    interface_index: u32,
     dns_servers: Vec<String>,
     dns_type: String,
     bootstrap_ip: Option<String>,
     bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
 ) -> Result<(), String> {
+    let interface_index = win::adapters::resolve_interface_index(interface_index)?;
+
     debug!(
-        "path: {}, dns_servers: {:?}, dns_type: {}",
-        path, dns_servers, dns_type
+        "interface_index: {}, dns_servers: {:?}, dns_type: {}",
+        interface_index, dns_servers, dns_type
     );
+
+    if dns_servers.is_empty() {
+        return Err("No DNS server address was provided".to_string());
+    }
+
     if dns_type == "doh" || dns_type == "dot" || dns_type == "doq" || dns_type == "doh3" {
-        let mut app_state = app_state.lock().await;
-        app_state
-            .dns_server
-            .run(dns_servers[0].to_string(), bootstrap_ip, bootstrap_resolver)
-            .await?;
+        // Read the interface's IPv6 DNS state *before* changing anything, so the
+        // decision below is based on what the user actually had configured.
+        let needs_ipv6_redirect = win::has_real_ipv6_dns(interface_index);
 
-        dns_utils::apply_dns_by_path(path, vec!["127.0.0.2".to_string()])
-            .map_err(|e| format!("Failed to apply dns by path: {}", e))?;
+        let ipv6_ready = {
+            let mut app_state = app_state.lock().await;
+            app_state
+                .dns_server
+                .run(dns_servers[0].to_string(), bootstrap_ip, bootstrap_resolver)
+                .await?
+        };
 
-        return Ok(());
+        win::dns_settings::set_interface_dns(
+            interface_index,
+            Family::V4,
+            &[IpAddr::V4(win::PROXY_V4)],
+        )
+        .map_err(|e| format!("Failed to set IPv4 DNS: {}", e))?;
+
+        // Close the IPv6 leak: the old WMI path (SetDNSServerSearchOrder) is IPv4-only,
+        // so a dual-stack machine kept sending queries to its ISP's IPv6 resolver even
+        // while "protected". Only redirect when the interface really has IPv6 DNS, and
+        // only when the proxy actually managed to bind [::1]:53 — pointing IPv6 DNS at
+        // a port nothing is listening on would break resolution outright.
+        if needs_ipv6_redirect {
+            if ipv6_ready {
+                if let Err(e) = win::dns_settings::set_interface_dns(
+                    interface_index,
+                    Family::V6,
+                    &[IpAddr::V6(win::PROXY_V6)],
+                ) {
+                    error!(
+                        "Failed to set IPv6 DNS on interface {}: {}",
+                        interface_index, e
+                    );
+                }
+            } else {
+                warn!(
+                    "Interface {} has IPv6 DNS configured but the proxy could not bind [::1]:53 — IPv6 queries will bypass it",
+                    interface_index
+                );
+            }
+        }
+
+        Ok(())
     } else if dns_type == "dns" {
-        let result = dns_utils::apply_dns_by_path(path, dns_servers);
-        return result;
+        let (v4, v6): (Vec<IpAddr>, Vec<IpAddr>) = dns_servers
+            .iter()
+            .filter_map(|s| s.parse::<IpAddr>().ok())
+            .partition(|ip| ip.is_ipv4());
+
+        if v4.is_empty() && v6.is_empty() {
+            return Err(format!(
+                "None of the supplied DNS servers are valid IP addresses: {:?}",
+                dns_servers
+            ));
+        }
+
+        // Only touch a family we actually have servers for. Passing an empty list to
+        // `set_interface_dns` reverts that family to DHCP, which would silently discard
+        // the user's selection rather than apply it.
+        if v4.is_empty() {
+            warn!(
+                "No IPv4 servers supplied for interface {} — leaving IPv4 DNS unchanged",
+                interface_index
+            );
+        } else {
+            win::dns_settings::set_interface_dns(interface_index, Family::V4, &v4)
+                .map_err(|e| format!("Failed to set IPv4 DNS: {}", e))?;
+        }
+
+        if v6.is_empty() {
+            debug!(
+                "No IPv6 servers supplied for interface {} — IPv6 DNS left as-is (plain DNS mode can't fully close the leak without one)",
+                interface_index
+            );
+        } else {
+            win::dns_settings::set_interface_dns(interface_index, Family::V6, &v6)
+                .map_err(|e| format!("Failed to set IPv6 DNS: {}", e))?;
+        }
+
+        Ok(())
     } else {
         error!("Invalid DNS type: {}", dns_type);
-        return Err(format!("Invalid DNS type: {}", dns_type));
+        Err(format!("Invalid DNS type: {}", dns_type))
     }
 }
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn clear_dns(
     app_state: tauri::State<'_, Mutex<AppState>>,
-    path: String,
+    interface_index: u32,
 ) -> Result<(), String> {
-    debug!("getting app state");
-    let mut app_state = app_state.lock().await;
+    let interface_index = win::adapters::resolve_interface_index(interface_index)?;
+
+    // Restore DNS *before* shutting the proxy down. While the interface still points at
+    // 127.0.0.2 / ::1, the proxy is the only resolver it can reach — killing it first
+    // and then failing the restore leaves the machine with no working DNS at all.
+    let mut restore_failed = false;
+    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V4, &[]) {
+        error!(
+            "Failed to clear IPv4 DNS on interface {}: {}",
+            interface_index, e
+        );
+        restore_failed = true;
+    }
+    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V6, &[]) {
+        debug!(
+            "Failed to clear IPv6 DNS on interface {}: {} (may never have been redirected)",
+            interface_index, e
+        );
+    }
+
+    // `SetInterfaceDnsSettings` has historically reported success while doing nothing,
+    // so verify against the adapter table rather than trusting the return code.
+    if restore_failed || win::interface_uses_proxy_dns(interface_index) {
+        warn!(
+            "Interface {} still points at the proxy after the restore — running a full stale-DNS sweep",
+            interface_index
+        );
+        win::clear_stale_doh_dns();
+    }
+
+    if win::interface_uses_proxy_dns(interface_index) {
+        // Deliberately leave the proxy running: it is the only thing still answering
+        // queries for this interface. Shutting it down here is what turns a failed
+        // restore into a total DNS outage.
+        return Err(format!(
+            "Could not restore DNS on interface {}. The DoH proxy has been left running so name resolution keeps working — reset the DNS settings manually, then try again.",
+            interface_index
+        ));
+    }
+
     debug!("shutting down dns server");
+    let mut app_state = app_state.lock().await;
     app_state.dns_server.shutdown().await?;
     debug!("dns server shutdown");
-    debug!("clearing dns for path: {}", path);
-    let result = dns_utils::clear_dns_by_path(path);
-    debug!("dns cleared");
-    return result;
+
+    Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]

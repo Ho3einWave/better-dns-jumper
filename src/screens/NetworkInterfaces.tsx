@@ -1,5 +1,4 @@
 import { addToast } from "@heroui/toast";
-import { CONFIG_MANAGER_ERROR_CODE_DISABLED } from "../constants/interface";
 import { useChangeInterfaceState, useInterfaces } from "../hooks/useInterfaces";
 import { Button } from "@heroui/button";
 import {
@@ -66,29 +65,26 @@ const NetworkInterfaces = () => {
 
     const processedInterfaces = interfaces
         ?.sort((a, b) => {
-            // First sort by net_enabled status
-            const enabledDiff =
-                Number(b.adapter.net_enabled) - Number(a.adapter.net_enabled);
+            // First sort by up status
+            const enabledDiff = Number(b.is_up) - Number(a.is_up);
             if (enabledDiff !== 0) {
                 return enabledDiff;
             }
 
             // Then sort by type priority
-            const typeA = getInterfaceType(a.adapter.description ?? "");
-            const typeB = getInterfaceType(b.adapter.description ?? "");
+            const typeA = getInterfaceType(a.description ?? "");
+            const typeB = getInterfaceType(b.description ?? "");
             const priorityA = getTypePriority(typeA);
             const priorityB = getTypePriority(typeB);
             return priorityA - priorityB;
         })
         .filter(
             (iface) =>
-                iface.adapter.name
+                iface.name?.toLowerCase().includes(search.toLowerCase()) ||
+                iface.description
                     ?.toLowerCase()
                     .includes(search.toLowerCase()) ||
-                iface.adapter.description
-                    ?.toLowerCase()
-                    .includes(search.toLowerCase()) ||
-                iface.config.ip_address?.some((ip) => ip.includes(search)),
+                iface.ip_addresses?.some((ip) => ip.includes(search)),
         );
 
     return (
@@ -103,31 +99,29 @@ const NetworkInterfaces = () => {
                 </div>
                 <ScrollShadow className=" overflow-y-auto  flex flex-col gap-2 scrollbar-hide">
                     {processedInterfaces?.map((iface) => {
-                        const isDisabled =
-                            iface.adapter.config_manager_error_code ===
-                            CONFIG_MANAGER_ERROR_CODE_DISABLED;
+                        const isDisabled = iface.is_admin_disabled;
                         return (
                             <div
-                                key={iface.adapter.interface_index}
+                                key={iface.interface_index}
                                 className="flex justify-between bg-zinc-800 rounded-xl p-2 pl-2"
                             >
                                 <div className="text-xs flex flex-col gap-1">
                                     <div className="flex items-center gap-1">
                                         <span className="text-xl">
                                             {getInterfaceIcon(
-                                                iface.adapter.description ?? "",
+                                                iface.description ?? "",
                                             )}
                                         </span>
-                                        <span>{iface.adapter.name}</span>
+                                        <span>{iface.name}</span>
                                         <span className="text-zinc-400">
-                                            #{iface.adapter.interface_index}
+                                            #{iface.interface_index}
                                         </span>
                                     </div>
                                     <div className="text-zinc-400">
-                                        {iface.adapter.description}
+                                        {iface.description}
                                     </div>
                                     <div className="text-zinc-400 flex gap-1">
-                                        {iface.config.ip_address?.map((ip) => (
+                                        {iface.ip_addresses?.map((ip) => (
                                             <InterfaceIp ip={ip} />
                                         ))}
                                     </div>
@@ -140,7 +134,7 @@ const NetworkInterfaces = () => {
                                         }
                                         onPress={() =>
                                             handleChangeInterfaceState(
-                                                iface.adapter.interface_index,
+                                                iface.interface_index,
                                                 isDisabled,
                                             )
                                         }
