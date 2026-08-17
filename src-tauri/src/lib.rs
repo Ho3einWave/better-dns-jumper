@@ -109,21 +109,48 @@ pub fn run() {
             let log_store = DnsLogStore::from_receiver(log_receiver);
             app.manage(log_store);
 
-            // Load persisted rules from store
+            // Load persisted rules from store.
+            //
+            // This hook is NOT a plain sync context: `main` is `#[tokio::main]` and Tauri
+            // runs `setup` from the event loop's `Ready` event on that same thread, so we
+            // are inside a tokio async context. Any blocking acquisition here panics —
+            // `Handle::block_on` and `RwLock::blocking_write` both refuse to block a
+            // thread that is driving async tasks. That is what made the app die on launch
+            // as soon as the user had saved a single rule.
+            //
+            // `try_write` never blocks. Nothing else can realistically hold the lock this
+            // early, but if it does we fall back to an async write rather than dropping
+            // the user's rules on the floor.
             let rules_for_setup = rules_clone.clone();
-            if let Ok(store) = app.store_builder("dns_rules.json").build() {
-                if let Some(rules_value) = store.get("rules") {
-                    if let Ok(persisted_rules) = serde_json::from_value::<Vec<DnsRule>>(rules_value)
-                    {
-                        info!("Loaded {} DNS rules from store", persisted_rules.len());
-                        // Use blocking since we're in setup (sync context)
-                        let rt = tokio::runtime::Handle::current();
-                        rt.block_on(async {
-                            let mut rules_guard = rules_for_setup.write().await;
-                            rules_guard.load_rules(persisted_rules);
-                        });
+            match app.store_builder("dns_rules.json").build() {
+                Ok(store) => match store.get("rules") {
+                    Some(rules_value) => {
+                        match serde_json::from_value::<Vec<DnsRule>>(rules_value) {
+                            Ok(persisted_rules) => {
+                                info!("Loading {} DNS rules from store", persisted_rules.len());
+                                // Separate handle: the `try_write()` scrutinee keeps
+                                // `rules_for_setup` borrowed across every arm of the
+                                // match, so it can't be moved into the deferred task.
+                                let rules_deferred = rules_for_setup.clone();
+                                match rules_for_setup.try_write() {
+                                    Ok(mut rules_guard) => rules_guard.load_rules(persisted_rules),
+                                    Err(_) => {
+                                        debug!("DNS rules lock busy during setup, deferring load");
+                                        tokio::spawn(async move {
+                                            rules_deferred
+                                                .write()
+                                                .await
+                                                .load_rules(persisted_rules);
+                                        });
+                                    }
+                                }
+                            }
+                            Err(e) => error!("Failed to parse persisted DNS rules: {}", e),
+                        }
                     }
-                }
+                    None => debug!("No persisted DNS rules found"),
+                },
+                Err(e) => error!("Failed to open DNS rules store: {}", e),
             }
 
             Ok(())

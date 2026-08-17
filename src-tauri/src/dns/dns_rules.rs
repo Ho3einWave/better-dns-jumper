@@ -46,16 +46,20 @@ impl DnsRules {
         let domain_lower = rule.domain.to_lowercase();
         if domain_lower.starts_with("*.") {
             // Remove any existing wildcard with same domain
-            self.wildcard.retain(|r| r.domain.to_lowercase() != domain_lower);
+            self.wildcard
+                .retain(|r| r.domain.to_lowercase() != domain_lower);
             self.wildcard.push(DnsRule {
                 domain: domain_lower,
                 ..rule
             });
         } else {
-            self.exact.insert(domain_lower.clone(), DnsRule {
-                domain: domain_lower,
-                ..rule
-            });
+            self.exact.insert(
+                domain_lower.clone(),
+                DnsRule {
+                    domain: domain_lower,
+                    ..rule
+                },
+            );
         }
     }
 
