@@ -20,8 +20,10 @@ use std::ffi::c_void;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ptr;
 
-use log::error;
+use log::{error, warn};
 use serde::Serialize;
+
+use crate::error::{AppError, AppResult};
 use windows::Win32::NetworkManagement::IpHelper::{
     ConvertInterfaceLuidToIndex, FreeMibTable, GetAdaptersAddresses, GetBestInterface, GetIfTable2,
     GAA_FLAG_INCLUDE_ALL_INTERFACES, GAA_FLAG_INCLUDE_GATEWAYS, GAA_FLAG_SKIP_ANYCAST,
@@ -59,7 +61,7 @@ const ERROR_NO_DATA: u32 = 232;
 
 /// Lists all network interfaces with their current addresses, gateways, DNS servers,
 /// and admin-enabled state.
-pub fn list_interfaces() -> Result<Vec<NetworkInterface>, String> {
+pub fn list_interfaces() -> AppResult<Vec<NetworkInterface>> {
     let mut interfaces = read_adapters()?;
     let admin_disabled = read_admin_disabled_map();
     for iface in &mut interfaces {
@@ -70,18 +72,20 @@ pub fn list_interfaces() -> Result<Vec<NetworkInterface>, String> {
     Ok(interfaces)
 }
 
-pub fn best_interface_index() -> Result<u32, String> {
+pub fn best_interface_index() -> AppResult<u32> {
     let dest: u32 = Ipv4Addr::new(8, 8, 8, 8).into();
     let mut if_index: u32 = 0;
     let status = unsafe { GetBestInterface(dest, &mut if_index) };
     if status != ERROR_SUCCESS {
-        return Err(format!("GetBestInterface failed: {}", status));
+        // No route to the internet at all — a disconnected machine, not a bug. The
+        // caller turns this into an actionable message instead of a Win32 code.
+        return Err(AppError::NoActiveInterface);
     }
     Ok(if_index)
 }
 
 /// Maps the frontend's `0` = "Auto" sentinel to the real best-interface index.
-pub fn resolve_interface_index(idx: u32) -> Result<u32, String> {
+pub fn resolve_interface_index(idx: u32) -> AppResult<u32> {
     if idx == 0 {
         best_interface_index()
     } else {
@@ -118,7 +122,7 @@ fn read_admin_disabled_map() -> HashMap<u32, bool> {
     map
 }
 
-fn read_adapters() -> Result<Vec<NetworkInterface>, String> {
+fn read_adapters() -> AppResult<Vec<NetworkInterface>> {
     let buffer = fetch_adapters_buffer()?;
     let mut interfaces = Vec::new();
 
@@ -132,7 +136,7 @@ fn read_adapters() -> Result<Vec<NetworkInterface>, String> {
             let interface_index = match luid_to_index(&adapter.Luid) {
                 Some(idx) => idx,
                 None => {
-                    error!("Skipping adapter with unresolvable LUID");
+                    warn!("Skipping adapter with an unresolvable LUID");
                     current = adapter.Next;
                     continue;
                 }
@@ -219,7 +223,7 @@ unsafe fn luid_to_index(luid: &NET_LUID_LH) -> Option<u32> {
 
 /// Fetches the adapter list, retrying if the required buffer size changes between calls
 /// (the adapter set can change mid-enumeration, especially during shutdown).
-fn fetch_adapters_buffer() -> Result<Vec<u64>, String> {
+fn fetch_adapters_buffer() -> AppResult<Vec<u64>> {
     const MAX_TRIES: usize = 3;
 
     // Constructed from `.0` rather than via `|` to avoid depending on this newtype
@@ -252,13 +256,13 @@ fn fetch_adapters_buffer() -> Result<Vec<u64>, String> {
             ERROR_SUCCESS => return Ok(buffer),
             ERROR_BUFFER_OVERFLOW => continue, // adapter set changed size mid-call, retry
             ERROR_NO_DATA => return Ok(Vec::new()),
-            other => return Err(format!("GetAdaptersAddresses failed: {}", other)),
+            other => return Err(AppError::win32("GetAdaptersAddresses", other)),
         }
     }
 
-    Err(format!(
-        "GetAdaptersAddresses kept overflowing after {} tries",
-        MAX_TRIES
+    Err(AppError::win32(
+        "GetAdaptersAddresses (buffer kept growing between attempts)",
+        ERROR_BUFFER_OVERFLOW,
     ))
 }
 

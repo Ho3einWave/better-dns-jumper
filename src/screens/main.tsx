@@ -21,6 +21,7 @@ import { Texture } from "../components/icons/Texture";
 import { Tab, Tabs } from "@heroui/tabs";
 import { Test } from "../components/icons/Test";
 import { PROTOCOLS, SERVER } from "../types";
+import { errorMessage } from "../utils/errorMessage";
 import { useServerStore } from "../stores/useServersStore";
 import { useDnsState } from "../hooks/useDnsState";
 import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
@@ -33,6 +34,7 @@ const Main = () => {
     const {
         isActive,
         toggleIsActive,
+        setIsActive,
         dnsServer,
         setDnsServer,
         protocol,
@@ -75,10 +77,35 @@ const Main = () => {
         onSuccess: () => {
             refetchInterfaceDnsInfo();
         },
+        onError: (error) => {
+            // The optimistic toggle already flipped to "connected"; the DNS change did
+            // not happen, so put the switch back rather than showing a state the
+            // adapter is not actually in.
+            setIsActive(false);
+            refetchInterfaceDnsInfo();
+            addToast({
+                title: "Could not apply DNS settings",
+                description: errorMessage(error),
+                color: "danger",
+                timeout: 8000,
+            });
+        },
     });
     const { mutate: clearDns } = useClearDns({
         onSuccess: () => {
             refetchInterfaceDnsInfo();
+        },
+        onError: (error) => {
+            // Leave the toggle on: clear_dns only reports failure when the adapter is
+            // still pointed at the proxy, which means DNS is still being served by it.
+            setIsActive(true);
+            refetchInterfaceDnsInfo();
+            addToast({
+                title: "Could not restore DNS settings",
+                description: errorMessage(error),
+                color: "danger",
+                timeout: 8000,
+            });
         },
     });
 
@@ -111,7 +138,7 @@ const Main = () => {
                     newMap.set(serverKey, {
                         success: false,
                         latency: 0,
-                        error: error.message || "Test failed",
+                        error: errorMessage(error, "Test failed"),
                     });
                     return newMap;
                 });
@@ -153,7 +180,6 @@ const Main = () => {
     }, [protocol, servers, isLoadingServers]);
     const { mutate: clearDnsCache } = useClearDnsCache({
         onSuccess: () => {
-            console.log("DNS cleared");
             addToast({
                 title: "DNS cleared",
                 color: "success",
@@ -161,12 +187,9 @@ const Main = () => {
             });
         },
         onError: (error) => {
-            console.log(
-                "[handleClearDnsCache] Error clearing DNS cache",
-                error
-            );
             addToast({
-                title: "Error clearing DNS cache",
+                title: "Could not clear the DNS cache",
+                description: errorMessage(error),
                 color: "danger",
                 icon: <Broom className="text-xl" />,
             });
@@ -183,6 +206,7 @@ const Main = () => {
         } catch (error) {
             addToast({
                 title: "Failed to copy",
+                description: errorMessage(error),
                 color: "danger",
             });
         }

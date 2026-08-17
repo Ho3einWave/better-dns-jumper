@@ -2,6 +2,7 @@ use crate::dns::dns_log_store::DnsLogStore;
 use crate::dns::dns_rules::DnsRules;
 use crate::dns::dns_types::{DnsQueryLog, DnsRule};
 use crate::dns::{dns_server, dns_utils};
+use crate::error::{AppError, AppResult, LogErr};
 use crate::types::ServerTestResult;
 use crate::win;
 use crate::win::dns_settings::Family;
@@ -19,7 +20,7 @@ pub async fn test_server(
     domain: String,
     bootstrap_ip: Option<String>,
     bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
-) -> Result<ServerTestResult, String> {
+) -> AppResult<ServerTestResult> {
     use hickory_proto::xfer::Protocol;
     use std::net::SocketAddr;
 
@@ -30,7 +31,7 @@ pub async fn test_server(
         // Plain DNS over UDP
         let ip: std::net::IpAddr = server
             .parse()
-            .map_err(|e| format!("Failed to parse IP: {}", e))?;
+            .map_err(|_| AppError::invalid(format!("\"{}\" is not a valid IP address.", server)))?;
         let socket_addr = SocketAddr::new(ip, 53);
 
         let mut config = hickory_resolver::config::ResolverConfig::new();
@@ -76,8 +77,7 @@ pub async fn test_server(
             effective_ip,
         )
         .map_err(|e| {
-            error!("Failed to create DNS resolver: {:?}", e);
-            format!("Failed to create DNS resolver: {:?}", e)
+            AppError::Resolver(format!("could not build a resolver for {}: {}", server, e))
         })?
     };
 
@@ -103,26 +103,32 @@ pub async fn test_server(
             })
         }
         Ok(Err(e)) => {
-            error!(
+            warn!(
                 "DNS lookup failed for {} via {} after {:?}: {}",
                 domain, server, elapsed, e
             );
-            Err(format!("DNS lookup failed: {}", e))
+            Err(AppError::Resolver(format!(
+                "{} could not resolve {}: {}",
+                server, domain, e
+            )))
         }
         Err(_) => {
-            error!(
+            warn!(
                 "DNS lookup timed out for {} via {} after {:?}",
                 domain, server, elapsed
             );
-            Err(format!("DNS lookup timed out after {:?}", elapsed))
+            Err(AppError::Resolver(format!(
+                "{} did not answer within {:?}.",
+                server, timeout
+            )))
         }
     }
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn get_interface_dns_info(interface_idx: u32) -> Result<dns_utils::InterfaceDnsInfo, String> {
+pub fn get_interface_dns_info(interface_idx: u32) -> AppResult<dns_utils::InterfaceDnsInfo> {
     let interface_idx = win::adapters::resolve_interface_index(interface_idx)?;
-    dns_utils::get_interface_dns_info(interface_idx)
+    dns_utils::get_interface_dns_info(interface_idx).log_err("get_interface_dns_info")
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -133,16 +139,38 @@ pub async fn set_dns(
     dns_type: String,
     bootstrap_ip: Option<String>,
     bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
-) -> Result<(), String> {
+) -> AppResult<()> {
+    set_dns_inner(
+        app_state,
+        interface_index,
+        dns_servers,
+        dns_type,
+        bootstrap_ip,
+        bootstrap_resolver,
+    )
+    .await
+    .log_err("set_dns")
+}
+
+async fn set_dns_inner(
+    app_state: tauri::State<'_, Mutex<AppState>>,
+    interface_index: u32,
+    dns_servers: Vec<String>,
+    dns_type: String,
+    bootstrap_ip: Option<String>,
+    bootstrap_resolver: Option<dns_server::BootstrapResolverInfo>,
+) -> AppResult<()> {
     let interface_index = win::adapters::resolve_interface_index(interface_index)?;
 
     debug!(
-        "interface_index: {}, dns_servers: {:?}, dns_type: {}",
-        interface_index, dns_servers, dns_type
+        "set_dns: interface={}, type={}, servers={:?}",
+        interface_index, dns_type, dns_servers
     );
 
     if dns_servers.is_empty() {
-        return Err("No DNS server address was provided".to_string());
+        return Err(AppError::invalid(
+            "No DNS server address was provided.".to_string(),
+        ));
     }
 
     if dns_type == "doh" || dns_type == "dot" || dns_type == "doq" || dns_type == "doh3" {
@@ -162,8 +190,7 @@ pub async fn set_dns(
             interface_index,
             Family::V4,
             &[IpAddr::V4(win::PROXY_V4)],
-        )
-        .map_err(|e| format!("Failed to set IPv4 DNS: {}", e))?;
+        )?;
 
         // Close the IPv6 leak: the old WMI path (SetDNSServerSearchOrder) is IPv4-only,
         // so a dual-stack machine kept sending queries to its ISP's IPv6 resolver even
@@ -190,6 +217,16 @@ pub async fn set_dns(
             }
         }
 
+        info!(
+            "Applied {} DNS on interface {} via the local proxy (IPv6 redirect: {})",
+            dns_type.to_uppercase(),
+            interface_index,
+            if needs_ipv6_redirect && ipv6_ready {
+                "on"
+            } else {
+                "off"
+            }
+        );
         Ok(())
     } else if dns_type == "dns" {
         let (v4, v6): (Vec<IpAddr>, Vec<IpAddr>) = dns_servers
@@ -198,10 +235,10 @@ pub async fn set_dns(
             .partition(|ip| ip.is_ipv4());
 
         if v4.is_empty() && v6.is_empty() {
-            return Err(format!(
-                "None of the supplied DNS servers are valid IP addresses: {:?}",
-                dns_servers
-            ));
+            return Err(AppError::invalid(format!(
+                "None of the supplied DNS servers are valid IP addresses: {}.",
+                dns_servers.join(", ")
+            )));
         }
 
         // Only touch a family we actually have servers for. Passing an empty list to
@@ -213,8 +250,7 @@ pub async fn set_dns(
                 interface_index
             );
         } else {
-            win::dns_settings::set_interface_dns(interface_index, Family::V4, &v4)
-                .map_err(|e| format!("Failed to set IPv4 DNS: {}", e))?;
+            win::dns_settings::set_interface_dns(interface_index, Family::V4, &v4)?;
         }
 
         if v6.is_empty() {
@@ -223,14 +259,21 @@ pub async fn set_dns(
                 interface_index
             );
         } else {
-            win::dns_settings::set_interface_dns(interface_index, Family::V6, &v6)
-                .map_err(|e| format!("Failed to set IPv6 DNS: {}", e))?;
+            win::dns_settings::set_interface_dns(interface_index, Family::V6, &v6)?;
         }
 
+        info!(
+            "Applied plain DNS on interface {} ({} IPv4, {} IPv6 server(s))",
+            interface_index,
+            v4.len(),
+            v6.len()
+        );
         Ok(())
     } else {
-        error!("Invalid DNS type: {}", dns_type);
-        Err(format!("Invalid DNS type: {}", dns_type))
+        Err(AppError::invalid(format!(
+            "\"{}\" is not a supported DNS type. Expected one of: dns, doh, dot, doq, doh3.",
+            dns_type
+        )))
     }
 }
 
@@ -238,7 +281,16 @@ pub async fn set_dns(
 pub async fn clear_dns(
     app_state: tauri::State<'_, Mutex<AppState>>,
     interface_index: u32,
-) -> Result<(), String> {
+) -> AppResult<()> {
+    clear_dns_inner(app_state, interface_index)
+        .await
+        .log_err("clear_dns")
+}
+
+async fn clear_dns_inner(
+    app_state: tauri::State<'_, Mutex<AppState>>,
+    interface_index: u32,
+) -> AppResult<()> {
     let interface_index = win::adapters::resolve_interface_index(interface_index)?;
 
     // Restore DNS *before* shutting the proxy down. While the interface still points at
@@ -273,24 +325,30 @@ pub async fn clear_dns(
         // Deliberately leave the proxy running: it is the only thing still answering
         // queries for this interface. Shutting it down here is what turns a failed
         // restore into a total DNS outage.
-        return Err(format!(
-            "Could not restore DNS on interface {}. The DoH proxy has been left running so name resolution keeps working — reset the DNS settings manually, then try again.",
+        return Err(AppError::Proxy(format!(
+            "Could not restore the original DNS settings on interface {}. The local proxy has been left running so name resolution keeps working — reset the adapter's DNS to automatic, then try again.",
             interface_index
-        ));
+        )));
     }
 
-    debug!("shutting down dns server");
+    debug!("Restoring DNS succeeded; shutting the local proxy down");
     let mut app_state = app_state.lock().await;
-    app_state.dns_server.shutdown().await?;
-    debug!("dns server shutdown");
+    app_state
+        .dns_server
+        .shutdown()
+        .await
+        .map_err(AppError::Proxy)?;
 
+    info!(
+        "Cleared DNS on interface {} and stopped the proxy",
+        interface_index
+    );
     Ok(())
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub fn clear_dns_cache() -> Result<(), String> {
-    let result = dns_utils::clear_dns_cache();
-    return result;
+pub fn clear_dns_cache() -> AppResult<()> {
+    dns_utils::clear_dns_cache().log_err("clear_dns_cache")
 }
 
 // --- DNS Log commands ---
@@ -301,13 +359,14 @@ pub async fn get_dns_logs(
     filter: Option<String>,
     offset: Option<usize>,
     limit: Option<usize>,
-) -> Result<Vec<DnsQueryLog>, String> {
+) -> AppResult<Vec<DnsQueryLog>> {
     Ok(log_store.get_logs(filter, offset, limit).await)
 }
 
 #[tauri::command(rename_all = "snake_case")]
-pub async fn clear_dns_logs(log_store: tauri::State<'_, DnsLogStore>) -> Result<(), String> {
+pub async fn clear_dns_logs(log_store: tauri::State<'_, DnsLogStore>) -> AppResult<()> {
     log_store.clear_logs().await;
+    debug!("DNS query log buffer cleared");
     Ok(())
 }
 
@@ -316,7 +375,7 @@ pub async fn clear_dns_logs(log_store: tauri::State<'_, DnsLogStore>) -> Result<
 #[tauri::command(rename_all = "snake_case")]
 pub async fn get_dns_rules(
     rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
-) -> Result<Vec<DnsRule>, String> {
+) -> AppResult<Vec<DnsRule>> {
     let rules_guard = rules.read().await;
     Ok(rules_guard.to_vec())
 }
@@ -326,12 +385,14 @@ pub async fn save_dns_rule(
     app_handle: tauri::AppHandle,
     rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
     rule: DnsRule,
-) -> Result<(), String> {
+) -> AppResult<()> {
     {
         let mut rules_guard = rules.write().await;
         rules_guard.add_rule(rule);
     }
-    persist_rules(&app_handle, &rules).await
+    persist_rules(&app_handle, &rules)
+        .await
+        .log_err("save_dns_rule")
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -339,12 +400,14 @@ pub async fn delete_dns_rule(
     app_handle: tauri::AppHandle,
     rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
     id: String,
-) -> Result<(), String> {
+) -> AppResult<()> {
     {
         let mut rules_guard = rules.write().await;
         rules_guard.remove_rule(&id);
     }
-    persist_rules(&app_handle, &rules).await
+    persist_rules(&app_handle, &rules)
+        .await
+        .log_err("delete_dns_rule")
 }
 
 #[tauri::command(rename_all = "snake_case")]
@@ -352,18 +415,20 @@ pub async fn toggle_dns_rule(
     app_handle: tauri::AppHandle,
     rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
     id: String,
-) -> Result<(), String> {
+) -> AppResult<()> {
     {
         let mut rules_guard = rules.write().await;
         rules_guard.toggle_rule(&id);
     }
-    persist_rules(&app_handle, &rules).await
+    persist_rules(&app_handle, &rules)
+        .await
+        .log_err("toggle_dns_rule")
 }
 
 async fn persist_rules(
     app_handle: &tauri::AppHandle,
     rules: &Arc<RwLock<DnsRules>>,
-) -> Result<(), String> {
+) -> AppResult<()> {
     let rules_vec = {
         let rules_guard = rules.read().await;
         rules_guard.to_vec()
@@ -372,15 +437,14 @@ async fn persist_rules(
     let store = app_handle
         .store_builder("dns_rules.json")
         .build()
-        .map_err(|e| format!("Failed to open rules store: {}", e))?;
+        .map_err(|e| AppError::Store(format!("could not open dns_rules.json: {}", e)))?;
 
-    let rules_json = serde_json::to_value(&rules_vec)
-        .map_err(|e| format!("Failed to serialize rules: {}", e))?;
+    let rules_json = serde_json::to_value(&rules_vec)?;
 
     store.set("rules", rules_json);
     store
         .save()
-        .map_err(|e| format!("Failed to save rules store: {}", e))?;
+        .map_err(|e| AppError::Store(format!("could not write dns_rules.json: {}", e)))?;
 
     debug!("Persisted {} DNS rules", rules_vec.len());
     Ok(())

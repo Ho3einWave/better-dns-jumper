@@ -404,6 +404,7 @@ dependencies = [
  "tauri-plugin-store",
  "tauri-plugin-updater",
  "tauri-plugin-window-state",
+ "thiserror 2.0.17",
  "tokio",
  "tokio-util",
  "url",

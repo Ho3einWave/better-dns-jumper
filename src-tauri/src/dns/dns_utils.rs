@@ -1,3 +1,4 @@
+use crate::error::{AppError, AppResult};
 use crate::win;
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -12,7 +13,7 @@ extern "system" {
     fn DnsFlushResolverCache() -> i32;
 }
 
-pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, String> {
+pub fn get_interface_dns_info(interface_idx: u32) -> AppResult<InterfaceDnsInfo> {
     let interfaces = win::adapters::list_interfaces()?;
     interfaces
         .into_iter()
@@ -34,18 +35,20 @@ pub fn get_interface_dns_info(interface_idx: u32) -> Result<InterfaceDnsInfo, St
                 })
                 .collect(),
         })
-        .ok_or_else(|| format!("Interface with index {} not found", interface_idx))
+        .ok_or(AppError::InterfaceNotFound(interface_idx))
 }
 
-pub fn clear_dns_cache() -> Result<(), String> {
-    unsafe {
-        let result = DnsFlushResolverCache();
-
-        debug!("Flushed DNS cache: {}", result);
-        match result {
-            1 => Ok(()),
-            _ => Err(format!("Failed to clear DNS cache")),
-        }
+pub fn clear_dns_cache() -> AppResult<()> {
+    // Undocumented export: returns non-zero on success, and does not set last-error in
+    // a documented way, so there is no code worth reporting back.
+    let result = unsafe { DnsFlushResolverCache() };
+    debug!("DnsFlushResolverCache returned {}", result);
+    match result {
+        1 => Ok(()),
+        _ => Err(AppError::Internal(
+            "Windows refused to flush the DNS resolver cache. Try running the app as administrator."
+                .to_string(),
+        )),
     }
 }
 

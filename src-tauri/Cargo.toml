@@ -19,6 +19,7 @@ tauri-build = { version = "2", features = [] }
 
 [dependencies]
 log = "0.4.28"
+thiserror = "2"
 env_logger = "0.11.8"
 tauri = { version = "2", features = [] }
 tauri-plugin-opener = "2"

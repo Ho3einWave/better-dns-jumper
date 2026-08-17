@@ -1,5 +1,6 @@
 mod commands;
 mod dns;
+mod error;
 mod net_interfaces;
 mod types;
 mod utils;
@@ -159,6 +160,7 @@ pub fn run() {
         .expect("error while building tauri application")
         .run(move |_app_handle, _event| match &_event {
             RunEvent::ExitRequested { .. } => {
+                info!("Exit requested — restoring DNS settings before shutdown");
                 // Synchronous cleanup — no tokio dependency, completes before
                 // Windows force-kills the process during shutdown.
                 clear_stale_doh_dns();
@@ -168,7 +170,7 @@ pub fn run() {
                 label,
                 ..
             } => {
-                info!("closing window... {}", label);
+                debug!("Window '{}' close requested", label);
             }
             _ => (),
         })

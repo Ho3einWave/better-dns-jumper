@@ -8,6 +8,8 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 
 use log::{error, info, warn};
 
+use crate::error::AppResult;
+
 /// Loopback addresses the local DoH/DoT/DoQ/DoH3 proxy binds to.
 pub const PROXY_V4: Ipv4Addr = Ipv4Addr::new(127, 0, 0, 2);
 pub const PROXY_V6: Ipv6Addr = Ipv6Addr::LOCALHOST; // ::1
@@ -37,11 +39,11 @@ pub fn is_default_ipv6_anycast(ip: &IpAddr) -> bool {
 /// Uses `GetAdaptersAddresses` rather than `GetInterfaceDnsSettings` — see the note at
 /// the top of `dns_settings.rs` for why the latter can't be used to read a specific
 /// family.
-pub fn interface_dns_servers(if_index: u32) -> Result<Vec<IpAddr>, String> {
+pub fn interface_dns_servers(if_index: u32) -> AppResult<Vec<IpAddr>> {
     let iface = adapters::list_interfaces()?
         .into_iter()
         .find(|i| i.interface_index == if_index)
-        .ok_or_else(|| format!("Interface with index {} not found", if_index))?;
+        .ok_or(crate::error::AppError::InterfaceNotFound(if_index))?;
 
     Ok(iface
         .dns_servers

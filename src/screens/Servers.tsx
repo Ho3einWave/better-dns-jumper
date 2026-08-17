@@ -6,6 +6,7 @@ import { Tab, Tabs } from "@heroui/tabs";
 import ServerModal from "../components/ServerModal";
 import ServerCard from "../components/ServerCard";
 import ConfirmModal from "../components/ConfirmModal";
+import { errorMessage } from "../utils/errorMessage";
 import { PROTOCOLS, type SERVER } from "../types";
 import { useTestServer, type ServerTestResult } from "../hooks/useDns";
 import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
@@ -62,7 +63,7 @@ const Servers = () => {
                     newMap.set(serverKey, {
                         success: false,
                         latency: 0,
-                        error: error.message || "Test failed",
+                        error: errorMessage(error, "Test failed"),
                     });
                     return newMap;
                 });

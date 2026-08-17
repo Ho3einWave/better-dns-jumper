@@ -14,6 +14,8 @@
 use std::mem::MaybeUninit;
 use std::net::IpAddr;
 
+use crate::error::{AppError, AppResult};
+
 use windows::core::{GUID, PWSTR};
 use windows::Win32::NetworkManagement::IpHelper::{
     ConvertInterfaceIndexToLuid, ConvertInterfaceLuidToGuid, SetInterfaceDnsSettings,
@@ -41,21 +43,24 @@ impl Family {
     }
 }
 
-fn interface_guid(if_index: u32) -> Result<GUID, String> {
+fn interface_guid(if_index: u32) -> AppResult<GUID> {
     unsafe {
         let mut luid = MaybeUninit::<NET_LUID_LH>::zeroed().assume_init();
         let status = ConvertInterfaceIndexToLuid(if_index, &mut luid);
         if status.0 != 0 {
-            return Err(format!(
-                "ConvertInterfaceIndexToLuid({}) failed: {}",
-                if_index, status.0
-            ));
+            // The usual cause is that the adapter disappeared between enumeration and
+            // this call, so report it as a missing interface rather than a raw Win32
+            // code the user can do nothing with.
+            return Err(AppError::InterfaceNotFound(if_index));
         }
 
         let mut guid = MaybeUninit::<GUID>::zeroed().assume_init();
         let status = ConvertInterfaceLuidToGuid(&luid, &mut guid);
         if status.0 != 0 {
-            return Err(format!("ConvertInterfaceLuidToGuid failed: {}", status.0));
+            return Err(AppError::win32(
+                "ConvertInterfaceLuidToGuid",
+                status.0 as u32,
+            ));
         }
 
         Ok(guid)
@@ -64,7 +69,7 @@ fn interface_guid(if_index: u32) -> Result<GUID, String> {
 
 /// Sets the name server list for one address family on an interface.
 /// An empty `servers` slice reverts that family to the DHCP-provided servers.
-pub fn set_interface_dns(if_index: u32, family: Family, servers: &[IpAddr]) -> Result<(), String> {
+pub fn set_interface_dns(if_index: u32, family: Family, servers: &[IpAddr]) -> AppResult<()> {
     let guid = interface_guid(if_index)?;
 
     // DNS_INTERFACE_SETTINGS documents NameServer as "a series of comma- or
@@ -102,10 +107,7 @@ pub fn set_interface_dns(if_index: u32, family: Family, servers: &[IpAddr]) -> R
 
         let status = SetInterfaceDnsSettings(guid, &settings);
         if status.0 != 0 {
-            return Err(format!(
-                "SetInterfaceDnsSettings failed: 0x{:08x}",
-                status.0
-            ));
+            return Err(AppError::win32("SetInterfaceDnsSettings", status.0 as u32));
         }
     }
 

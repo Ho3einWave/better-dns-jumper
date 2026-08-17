@@ -1,3 +1,4 @@
+use crate::error::{AppError, AppResult};
 use crate::utils::create_wmi_connection;
 use serde::{Deserialize, Serialize};
 
@@ -11,9 +12,8 @@ use serde::{Deserialize, Serialize};
 /// COM is initialized once per call rather than twice. Must be run on a thread that
 /// has not already been initialized into an STA — see the caller, which dispatches it
 /// via `spawn_blocking` for exactly that reason.
-pub fn set_interface_enabled(index: u32, enable: bool) -> Result<(), String> {
-    let wmi_con =
-        create_wmi_connection().map_err(|e| format!("Failed to create WMI connection: {}", e))?;
+pub fn set_interface_enabled(index: u32, enable: bool) -> AppResult<()> {
+    let wmi_con = create_wmi_connection()?;
 
     let query = format!(
         "SELECT * FROM Win32_NetworkAdapter WHERE InterfaceIndex = {}",
@@ -22,18 +22,25 @@ pub fn set_interface_enabled(index: u32, enable: bool) -> Result<(), String> {
 
     let result: Vec<NetworkAdapterWmi> = wmi_con
         .raw_query(query)
-        .map_err(|e| format!("Failed to get network adapter path: {}", e))?;
+        .map_err(|e| AppError::Wmi(format!("querying adapter {}: {}", index, e)))?;
 
     let path = result
         .first()
         .and_then(|adapter| adapter.path.clone())
-        .ok_or_else(|| format!("No network adapter found with interface index {}", index))?;
+        .ok_or(AppError::InterfaceNotFound(index))?;
 
     let method = if enable { "Enable" } else { "Disable" };
 
     wmi_con
         .exec_instance_method::<NetworkAdapterWmi, _>(path, method, ())
-        .map_err(|e| e.to_string())
+        .map_err(|e| {
+            AppError::Wmi(format!(
+                "could not {} adapter {}: {}. Changing an adapter's state requires administrator rights.",
+                method.to_lowercase(),
+                index,
+                e
+            ))
+        })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
