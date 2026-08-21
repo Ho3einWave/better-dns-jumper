@@ -173,6 +173,13 @@ pub fn run() {
                 // Windows force-kills the process during shutdown.
                 clear_stale_doh_dns();
             }
+            // Second chance. The sweep is idempotent and returns immediately when no
+            // interface points at the proxy, so running it again costs nothing — and
+            // leaving 127.0.0.2 applied costs the user their internet.
+            RunEvent::Exit => {
+                info!("Exiting — final DNS restore check");
+                clear_stale_doh_dns();
+            }
             RunEvent::WindowEvent {
                 event: WindowEvent::CloseRequested { .. },
                 label,

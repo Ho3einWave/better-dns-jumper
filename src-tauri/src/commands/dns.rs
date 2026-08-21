@@ -305,7 +305,17 @@ async fn clear_dns_inner(
     // Restore DNS *before* shutting the proxy down. While the interface still points at
     // 127.0.0.2 / ::1, the proxy is the only resolver it can reach — killing it first
     // and then failing the restore leaves the machine with no working DNS at all.
-    let restored = restore_dhcp_dns(interface_index).await;
+    // Same implementation the exit handler uses — see `win::restore_dhcp_dns_blocking`.
+    // These two paths were separate once and only this one got fixed, which is how
+    // 127.0.0.2 survived app close. It blocks, so it runs on a worker thread.
+    let restored = tauri::async_runtime::spawn_blocking(move || {
+        win::restore_dhcp_dns_blocking(interface_index)
+    })
+    .await
+    .unwrap_or_else(|e| {
+        error!("DNS restore task did not complete: {}", e);
+        false
+    });
 
     if !restored && win::interface_uses_proxy_dns(interface_index) {
         // Deliberately leave the proxy running: it is the only thing still answering
@@ -344,128 +354,6 @@ async fn clear_dns_inner(
         interface_index
     );
     Ok(())
-}
-
-/// Reverts an interface to its DHCP-provided DNS servers, escalating until it takes.
-///
-/// Returns whether the previously configured servers are actually gone.
-///
-/// Three mechanisms are tried in order, because they do not fail in the same way:
-///
-/// 1. `SetInterfaceDnsSettings` with a null `NameServer` — the documented spelling.
-/// 2. The same call with an empty string. A null pointer appears to be ignored on some
-///    systems even with `DNS_SETTING_NAMESERVER` set, so the call reports success while
-///    the old servers stay put.
-/// 3. WMI's `SetDNSServerSearchOrder`, the mechanism this app used before the IP Helper
-///    migration. IPv4-only, which is the family that matters — `127.0.0.2` is what
-///    breaks name resolution when it is left behind.
-async fn restore_dhcp_dns(interface_index: u32) -> bool {
-    // Whatever is on the adapter right now is what has to disappear. Snapshotting it
-    // works for plain DNS too, where nothing points at the proxy and checking only for
-    // 127.0.0.2 would report success without having changed anything at all.
-    let applied: Vec<IpAddr> = win::interface_dns_servers(interface_index)
-        .unwrap_or_default()
-        .into_iter()
-        .filter(|ip| !win::is_default_ipv6_anycast(ip))
-        .collect();
-
-    if applied.is_empty() {
-        debug!(
-            "Interface {} has no configured DNS servers; nothing to restore",
-            interface_index
-        );
-        return true;
-    }
-    debug!(
-        "Restoring interface {}, currently set to {:?}",
-        interface_index, applied
-    );
-
-    for family in [Family::V4, Family::V6] {
-        if let Err(e) = win::dns_settings::set_interface_dns(interface_index, family, &[]) {
-            debug!(
-                "Null-pointer clear failed for {:?} on interface {}: {}",
-                family, interface_index, e
-            );
-        }
-    }
-    if dns_restored(interface_index, &applied).await {
-        return true;
-    }
-
-    warn!(
-        "Interface {} unchanged after the null clear — retrying with an empty string",
-        interface_index
-    );
-    for family in [Family::V4, Family::V6] {
-        if let Err(e) = win::dns_settings::clear_interface_dns_empty_string(interface_index, family)
-        {
-            debug!(
-                "Empty-string clear failed for {:?} on interface {}: {}",
-                family, interface_index, e
-            );
-        }
-    }
-    if dns_restored(interface_index, &applied).await {
-        return true;
-    }
-
-    warn!(
-        "Interface {} unchanged after both IP Helper forms — falling back to WMI",
-        interface_index
-    );
-    let wmi_result = tauri::async_runtime::spawn_blocking(move || {
-        win::dns_legacy::set_interface_dns_wmi(interface_index, Family::V4, &[])
-    })
-    .await;
-    match wmi_result {
-        Ok(Ok(())) => debug!("WMI fallback reported success"),
-        Ok(Err(e)) => error!(
-            "WMI fallback failed on interface {}: {}",
-            interface_index, e
-        ),
-        Err(e) => error!("WMI fallback task did not complete: {}", e),
-    }
-
-    dns_restored(interface_index, &applied).await
-}
-
-/// True once none of `applied` are still configured on the interface.
-///
-/// Polls rather than reading once: `GetAdaptersAddresses` does not always reflect a
-/// `SetInterfaceDnsSettings` write immediately, so a single read taken straight
-/// afterwards can report the old servers and make a good restore look like a failure.
-async fn dns_restored(interface_index: u32, applied: &[IpAddr]) -> bool {
-    const ATTEMPTS: usize = 5;
-    const DELAY: Duration = Duration::from_millis(200);
-
-    for attempt in 1..=ATTEMPTS {
-        match win::interface_dns_servers(interface_index) {
-            Ok(current) => {
-                let leftover: Vec<&IpAddr> =
-                    applied.iter().filter(|ip| current.contains(ip)).collect();
-                if leftover.is_empty() {
-                    debug!(
-                        "Interface {} restored to {:?} after {} read(s)",
-                        interface_index, current, attempt
-                    );
-                    return true;
-                }
-                debug!(
-                    "Interface {} still shows {:?} on read {}/{}",
-                    interface_index, leftover, attempt, ATTEMPTS
-                );
-            }
-            Err(e) => debug!(
-                "Could not read DNS servers on interface {}: {}",
-                interface_index, e
-            ),
-        }
-        if attempt < ATTEMPTS {
-            time::sleep(DELAY).await;
-        }
-    }
-    false
 }
 
 #[tauri::command(rename_all = "snake_case")]
