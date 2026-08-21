@@ -305,35 +305,53 @@ async fn clear_dns_inner(
     // Restore DNS *before* shutting the proxy down. While the interface still points at
     // 127.0.0.2 / ::1, the proxy is the only resolver it can reach — killing it first
     // and then failing the restore leaves the machine with no working DNS at all.
-    let mut restore_failed = false;
-    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V4, &[]) {
-        error!(
-            "Failed to clear IPv4 DNS on interface {}: {}",
-            interface_index, e
-        );
-        restore_failed = true;
-    }
-    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V6, &[]) {
-        debug!(
-            "Failed to clear IPv6 DNS on interface {}: {} (may never have been redirected)",
-            interface_index, e
-        );
-    }
+    clear_both_families(interface_index);
 
-    // `SetInterfaceDnsSettings` has historically reported success while doing nothing,
-    // so verify against the adapter table rather than trusting the return code.
-    if restore_failed || win::interface_uses_proxy_dns(interface_index) {
+    // Escalating recovery. Each step is only reached if the previous one did not take.
+    if !proxy_cleared(interface_index).await {
         warn!(
-            "Interface {} still points at the proxy after the restore — running a full stale-DNS sweep",
+            "Interface {} still points at the proxy — running a full stale-DNS sweep",
             interface_index
         );
         win::clear_stale_doh_dns();
     }
 
-    if win::interface_uses_proxy_dns(interface_index) {
+    if !proxy_cleared(interface_index).await {
+        // Last resort: the WMI path this app used before the IP Helper migration. It is
+        // IPv4-only, which is all that matters here — 127.0.0.2 is the address that
+        // breaks name resolution when it is left behind.
+        warn!(
+            "Interface {} still points at the proxy after the sweep — falling back to WMI",
+            interface_index
+        );
+        let wmi_result = tauri::async_runtime::spawn_blocking(move || {
+            win::dns_legacy::set_interface_dns_wmi(interface_index, Family::V4, &[])
+        })
+        .await;
+        match wmi_result {
+            Ok(Ok(())) => debug!("WMI fallback reported success"),
+            Ok(Err(e)) => error!(
+                "WMI fallback failed on interface {}: {}",
+                interface_index, e
+            ),
+            Err(e) => error!("WMI fallback task did not complete: {}", e),
+        }
+    }
+
+    if !proxy_cleared(interface_index).await {
         // Deliberately leave the proxy running: it is the only thing still answering
         // queries for this interface. Shutting it down here is what turns a failed
         // restore into a total DNS outage.
+        match win::interface_dns_servers(interface_index) {
+            Ok(servers) => error!(
+                "Giving up on interface {}; it still reports DNS servers {:?}",
+                interface_index, servers
+            ),
+            Err(e) => error!(
+                "Giving up on interface {}; could not even read its DNS servers: {}",
+                interface_index, e
+            ),
+        }
         return Err(AppError::Proxy(format!(
             "Could not restore the original DNS settings on interface {}. The local proxy has been left running so name resolution keeps working — reset the adapter's DNS to automatic, then try again.",
             interface_index
@@ -353,6 +371,56 @@ async fn clear_dns_inner(
         interface_index
     );
     Ok(())
+}
+
+/// Reverts both address families to the DHCP-provided servers.
+fn clear_both_families(interface_index: u32) {
+    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V4, &[]) {
+        error!(
+            "Failed to clear IPv4 DNS on interface {}: {}",
+            interface_index, e
+        );
+    }
+    if let Err(e) = win::dns_settings::set_interface_dns(interface_index, Family::V6, &[]) {
+        debug!(
+            "Failed to clear IPv6 DNS on interface {}: {} (may never have been redirected)",
+            interface_index, e
+        );
+    }
+}
+
+/// True once the interface no longer points at the proxy.
+///
+/// Polls rather than reading once. `GetAdaptersAddresses` does not always reflect a
+/// `SetInterfaceDnsSettings` write immediately, so a single read taken straight
+/// afterwards can still report the old servers — which would make a perfectly good
+/// restore look like a failure and leave the proxy running for no reason.
+///
+/// Each attempt is logged with what was actually seen, because "did the write not take,
+/// or was the read just stale?" is otherwise impossible to answer from a bug report.
+async fn proxy_cleared(interface_index: u32) -> bool {
+    const ATTEMPTS: usize = 6;
+    const DELAY: Duration = Duration::from_millis(250);
+
+    for attempt in 1..=ATTEMPTS {
+        if !win::interface_uses_proxy_dns(interface_index) {
+            if attempt > 1 {
+                debug!(
+                    "Interface {} cleared after {} read(s)",
+                    interface_index, attempt
+                );
+            }
+            return true;
+        }
+        if attempt < ATTEMPTS {
+            debug!(
+                "Interface {} still shows the proxy on read {}/{}; waiting {:?}",
+                interface_index, attempt, ATTEMPTS, DELAY
+            );
+            time::sleep(DELAY).await;
+        }
+    }
+    false
 }
 
 #[tauri::command(rename_all = "snake_case")]
