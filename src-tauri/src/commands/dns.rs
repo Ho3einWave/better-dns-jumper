@@ -175,8 +175,11 @@ async fn set_dns_inner(
 
     if dns_type == "doh" || dns_type == "dot" || dns_type == "doq" || dns_type == "doh3" {
         // Read the interface's IPv6 DNS state *before* changing anything, so the
-        // decision below is based on what the user actually had configured.
-        let needs_ipv6_redirect = win::has_real_ipv6_dns(interface_index);
+        // decision below is based on what the user actually had configured. On Windows
+        // versions without SetInterfaceDnsSettings there is no way to write IPv6 name
+        // servers at all, so don't even look.
+        let needs_ipv6_redirect =
+            win::dns_settings::supports_ipv6_dns() && win::has_real_ipv6_dns(interface_index);
 
         let ipv6_ready = {
             let mut app_state = app_state.lock().await;
@@ -215,6 +218,12 @@ async fn set_dns_inner(
                     interface_index
                 );
             }
+        } else if !win::dns_settings::supports_ipv6_dns() && win::has_real_ipv6_dns(interface_index)
+        {
+            warn!(
+                "Interface {} has IPv6 DNS configured, but this Windows version cannot change it — IPv6 queries will bypass the proxy",
+                interface_index
+            );
         }
 
         info!(

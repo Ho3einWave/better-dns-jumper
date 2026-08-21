@@ -2,7 +2,10 @@
 //! See WMI_MIGRATION_PLAN.md for the rationale.
 
 pub mod adapters;
+pub mod device;
+pub mod dns_legacy;
 pub mod dns_settings;
+pub mod notify;
 
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 

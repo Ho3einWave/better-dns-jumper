@@ -25,12 +25,12 @@ use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
 use windows::Win32::NetworkManagement::IpHelper::{
-    ConvertInterfaceLuidToIndex, FreeMibTable, GetAdaptersAddresses, GetBestInterface, GetIfTable2,
-    GAA_FLAG_INCLUDE_ALL_INTERFACES, GAA_FLAG_INCLUDE_GATEWAYS, GAA_FLAG_SKIP_ANYCAST,
+    ConvertInterfaceLuidToIndex, FreeMibTable, GetAdaptersAddresses, GetBestInterfaceEx,
+    GetIfTable2, GAA_FLAG_INCLUDE_ALL_INTERFACES, GAA_FLAG_INCLUDE_GATEWAYS, GAA_FLAG_SKIP_ANYCAST,
     GAA_FLAG_SKIP_MULTICAST, GET_ADAPTERS_ADDRESSES_FLAGS, IP_ADAPTER_ADDRESSES_LH, MIB_IF_TABLE2,
 };
 use windows::Win32::NetworkManagement::Ndis::NET_LUID_LH;
-use windows::Win32::Networking::WinSock::SOCKADDR;
+use windows::Win32::Networking::WinSock::{AF_INET, AF_INET6, SOCKADDR, SOCKADDR_IN, SOCKADDR_IN6};
 
 /// One network interface, flattened from `GetAdaptersAddresses` + `GetIfTable2`.
 /// Replaces the old WMI-derived `{ adapter, config }` shape.
@@ -72,16 +72,62 @@ pub fn list_interfaces() -> AppResult<Vec<NetworkInterface>> {
     Ok(interfaces)
 }
 
+/// Picks the interface Windows would route internet traffic over.
+///
+/// Uses `GetBestInterfaceEx` rather than `GetBestInterface`: the latter takes a bare
+/// IPv4 address, so on an IPv6-only network it has no route to score and the app would
+/// fall back to the wrong adapter. This tries IPv6 first when the machine has IPv6
+/// connectivity at all, then IPv4.
+///
+/// The destinations are only used as routing probes — nothing is sent to them. They are
+/// well-known public resolver addresses purely because they are guaranteed to be off-link.
 pub fn best_interface_index() -> AppResult<u32> {
-    let dest: u32 = Ipv4Addr::new(8, 8, 8, 8).into();
-    let mut if_index: u32 = 0;
-    let status = unsafe { GetBestInterface(dest, &mut if_index) };
-    if status != ERROR_SUCCESS {
-        // No route to the internet at all — a disconnected machine, not a bug. The
-        // caller turns this into an actionable message instead of a Win32 code.
-        return Err(AppError::NoActiveInterface);
+    // Try IPv6 first, then IPv4. On a dual-stack machine both resolve to the same
+    // adapter; on a single-stack machine only one of them can succeed.
+    let candidates: [IpAddr; 2] = [
+        IpAddr::V6(Ipv6Addr::new(0x2001, 0x4860, 0x4860, 0, 0, 0, 0, 0x8888)),
+        IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)),
+    ];
+
+    for dest in candidates {
+        if let Some(index) = best_interface_for(dest) {
+            return Ok(index);
+        }
     }
-    Ok(if_index)
+
+    // No route to the internet at all — a disconnected machine, not a bug. The caller
+    // turns this into an actionable message instead of a Win32 code.
+    Err(AppError::NoActiveInterface)
+}
+
+fn best_interface_for(dest: IpAddr) -> Option<u32> {
+    let mut if_index: u32 = 0;
+    let status = unsafe {
+        match dest {
+            IpAddr::V4(v4) => {
+                let mut sa = SOCKADDR_IN {
+                    sin_family: AF_INET,
+                    ..Default::default()
+                };
+                sa.sin_addr.S_un.S_addr = u32::from_ne_bytes(v4.octets());
+                GetBestInterfaceEx(&sa as *const _ as *const SOCKADDR, &mut if_index)
+            }
+            IpAddr::V6(v6) => {
+                let mut sa = SOCKADDR_IN6 {
+                    sin6_family: AF_INET6,
+                    ..Default::default()
+                };
+                sa.sin6_addr.u.Byte = v6.octets();
+                GetBestInterfaceEx(&sa as *const _ as *const SOCKADDR, &mut if_index)
+            }
+        }
+    };
+
+    if status == ERROR_SUCCESS {
+        Some(if_index)
+    } else {
+        None
+    }
 }
 
 /// Maps the frontend's `0` = "Auto" sentinel to the real best-interface index.

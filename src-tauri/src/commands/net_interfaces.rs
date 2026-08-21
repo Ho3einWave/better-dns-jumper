@@ -5,9 +5,9 @@ use log::info;
 
 #[tauri::command(rename_all = "snake_case")]
 pub async fn change_interface_state(interface_idx: u32, enable: bool) -> AppResult<()> {
-    // Runs on a dedicated blocking thread: `COMLibrary::new()` calls
-    // `CoInitializeEx(COINIT_MULTITHREADED)`, which fails with RPC_E_CHANGED_MODE if
-    // the thread was already initialized into an STA (as the WebView/main thread is).
+    // Runs on a dedicated blocking thread: SetupAPI's class installer synchronously
+    // tears the adapter down and brings it back up, which takes long enough to stall
+    // the async runtime if it ran there.
     let result = tauri::async_runtime::spawn_blocking(move || {
         general::set_interface_enabled(interface_idx, enable)
     })

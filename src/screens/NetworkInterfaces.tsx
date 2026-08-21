@@ -16,7 +16,9 @@ import { useState } from "react";
 const NetworkInterfaces = () => {
     const [search, setSearch] = useState("");
     const { data: interfaces, refetch: refetchInterfaces } = useInterfaces({
-        refetchInterval: 5000,
+        // Push notifications (useNetworkChangeEvents) drive the refresh; this is only
+        // a safety net for a notification that never arrives.
+        refetchInterval: 30000,
     });
 
     const {

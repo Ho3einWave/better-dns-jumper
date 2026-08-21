@@ -20,7 +20,7 @@ import { Reset } from "../components/icons/Reset";
 import { Texture } from "../components/icons/Texture";
 import { Tab, Tabs } from "@heroui/tabs";
 import { Test } from "../components/icons/Test";
-import { PROTOCOLS, SERVER } from "../types";
+import { PROTOCOLS, PROXY_V4, PROXY_V6, SERVER } from "../types";
 import { errorMessage } from "../utils/errorMessage";
 import { useServerStore } from "../stores/useServersStore";
 import { useDnsState } from "../hooks/useDnsState";
@@ -73,7 +73,20 @@ const Main = () => {
     const { data: interfaceDnsInfo, refetch: refetchInterfaceDnsInfo } =
         useGetInterfaceDnsInfo(IfIdx);
 
-    const { mutate: setDns } = useSetDns({
+    // Ground truth: the proxy is engaged only if the adapter actually points at one of
+    // its loopback addresses. `isActive` on its own is an optimistic flag set by the
+    // toggle, so it drifts whenever DNS changes outside the app — another tool, a VPN
+    // client, or a previous run that failed to clean up. Reconciling here means the
+    // switch reflects the adapter rather than the last thing the user clicked.
+    const isProxyApplied = useMemo(
+        () =>
+            (interfaceDnsInfo?.dns_servers ?? []).some(
+                (server) => server === PROXY_V4 || server === PROXY_V6,
+            ),
+        [interfaceDnsInfo],
+    );
+
+    const { mutate: setDns, isPending: isSettingDns } = useSetDns({
         onSuccess: () => {
             refetchInterfaceDnsInfo();
         },
@@ -91,7 +104,7 @@ const Main = () => {
             });
         },
     });
-    const { mutate: clearDns } = useClearDns({
+    const { mutate: clearDns, isPending: isClearingDns } = useClearDns({
         onSuccess: () => {
             refetchInterfaceDnsInfo();
         },
@@ -108,6 +121,21 @@ const Main = () => {
             });
         },
     });
+
+    useEffect(() => {
+        // Only reconcile once the adapter state has actually loaded; while it is
+        // undefined we would otherwise flip the toggle off on every mount.
+        if (!interfaceDnsInfo) return;
+        // ...and never mid-mutation. A background refetch landing between the click and
+        // the command returning would otherwise momentarily revert the switch, because
+        // the adapter legitimately does not reflect the change yet. The mutation's own
+        // onSuccess/onError settles the state instead.
+        if (isSettingDns || isClearingDns) return;
+        if (isProxyApplied !== isActive) {
+            setIsActive(isProxyApplied);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isProxyApplied, interfaceDnsInfo, isSettingDns, isClearingDns]);
 
     const { mutate: testServer, isPending } = useTestServer({
         onSuccess: (data, variables) => {
@@ -271,6 +299,11 @@ const Main = () => {
         } else {
             handleClearDns();
         }
+        // Flip immediately so the switch feels responsive, then let the mutation's
+        // onError put it back and the reconciliation effect above confirm it against
+        // the adapter. Previously this was the *only* thing that set the state, so a
+        // failed clear left the UI showing "off" while 127.0.0.2 was still applied —
+        // and the user would close the app believing they had disconnected.
         toggleIsActive();
     };
 

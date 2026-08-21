@@ -82,3 +82,11 @@ export type AppLogEntry = {
     target: string;
     message: string;
 };
+
+/**
+ * Loopback addresses the bundled DNS proxy binds to. Must stay in sync with
+ * `PROXY_V4` / `PROXY_V6` in `src-tauri/src/win/mod.rs` — the UI decides whether the
+ * proxy is engaged by looking for these in the adapter's DNS server list.
+ */
+export const PROXY_V4 = "127.0.0.2";
+export const PROXY_V6 = "::1";

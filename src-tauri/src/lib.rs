@@ -107,6 +107,11 @@ pub fn run() {
             // run that didn't shut down cleanly (e.g. Windows shutdown/crash).
             clear_stale_doh_dns();
 
+            // Push notification of link/address changes, so the UI reacts to a Wi-Fi
+            // switch immediately instead of on the next poll tick. Failure is logged
+            // and non-fatal: the frontend keeps a slow poll as a safety net.
+            win::notify::register(app.handle().clone());
+
             // Create and manage the log store, starting the receiver task
             let log_store = DnsLogStore::from_receiver(log_receiver);
             app.manage(log_store);
@@ -162,6 +167,8 @@ pub fn run() {
         .run(move |_app_handle, _event| match &_event {
             RunEvent::ExitRequested { .. } => {
                 info!("Exit requested — restoring DNS settings before shutdown");
+                // Stop Windows calling back into a process that is tearing down.
+                win::notify::unregister();
                 // Synchronous cleanup — no tokio dependency, completes before
                 // Windows force-kills the process during shutdown.
                 clear_stale_doh_dns();

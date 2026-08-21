@@ -55,7 +55,10 @@ export const useGetInterfaceDnsInfo = (interface_idx: number | null) => {
                 interface_idx,
             });
         },
-        refetchInterval: 10000,
+        // Changes normally arrive by push (see useNetworkChangeEvents). This slow poll
+        // only exists so a missed or unregistered notification cannot leave the UI
+        // stale forever — registration is allowed to fail on the Rust side.
+        refetchInterval: 30000,
         enabled: interface_idx !== null,
     });
 };

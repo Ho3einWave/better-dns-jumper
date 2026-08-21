@@ -15,9 +15,13 @@ use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr, ToSocketAddrs};
 use std::str::FromStr;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
-use tokio::net::UdpSocket;
+use tokio::net::{TcpListener, UdpSocket};
 use tokio::sync::{mpsc, oneshot, Mutex, RwLock};
-use tokio::time::Instant;
+use tokio::time::{Duration, Instant};
+
+/// How long a TCP client may hold an idle connection before the server drops it.
+/// RFC 7766 suggests a few seconds for a resolver that is not under memory pressure.
+const TCP_CLIENT_TIMEOUT: Duration = Duration::from_secs(10);
 
 #[derive(Debug, serde::Deserialize)]
 pub struct BootstrapResolverInfo {
@@ -105,12 +109,38 @@ impl DnsServer {
 
         server.register_socket(socket_v4);
 
+        // A DNS response larger than the UDP payload limit comes back truncated (TC=1),
+        // and the client is then required to retry the same query over TCP. With no TCP
+        // listener that retry hits a closed port and the lookup fails outright — which
+        // is how large TXT/DNSKEY answers and some CDN responses were breaking.
+        match TcpListener::bind((crate::win::PROXY_V4, 53)).await {
+            Ok(listener) => server.register_listener(listener, TCP_CLIENT_TIMEOUT),
+            Err(e) => warn!(
+                "Could not bind TCP 127.0.0.2:53 — truncated responses will fail to retry: {}",
+                e
+            ),
+        }
+
         // Best-effort: without this, IPv6 DNS can never be safely redirected to the
         // proxy, which is the root of the IPv6 DNS leak (see WMI_MIGRATION_PLAN.md).
+        // Both the UDP and TCP sockets must come up, for the same truncation reason as
+        // above; if either fails we leave IPv6 DNS pointing at the real resolver.
         let ipv6_ready = match UdpSocket::bind((crate::win::PROXY_V6, 53)).await {
             Ok(socket_v6) => {
                 server.register_socket(socket_v6);
-                true
+                match TcpListener::bind((crate::win::PROXY_V6, 53)).await {
+                    Ok(listener) => {
+                        server.register_listener(listener, TCP_CLIENT_TIMEOUT);
+                        true
+                    }
+                    Err(e) => {
+                        warn!(
+                            "Bound UDP [::1]:53 but not TCP — not redirecting IPv6 DNS: {}",
+                            e
+                        );
+                        false
+                    }
+                }
             }
             Err(e) => {
                 warn!(
