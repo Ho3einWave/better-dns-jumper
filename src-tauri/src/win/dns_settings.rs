@@ -140,31 +140,54 @@ pub(crate) fn interface_guid(if_index: u32) -> AppResult<GUID> {
 /// Sets the name server list for one address family on an interface.
 /// An empty `servers` slice reverts that family to the DHCP-provided servers.
 pub fn set_interface_dns(if_index: u32, family: Family, servers: &[IpAddr]) -> AppResult<()> {
+    let text = if servers.is_empty() {
+        // Null pointer: the documented way to say "no name servers".
+        None
+    } else {
+        Some(
+            servers
+                .iter()
+                .map(|ip| ip.to_string())
+                .collect::<Vec<_>>()
+                .join(","),
+        )
+    };
+
     match set_interface_dns_settings() {
-        Some(set_fn) => set_via_ip_helper(set_fn, if_index, family, servers),
+        Some(set_fn) => set_via_ip_helper(set_fn, if_index, family, text.as_deref()),
         None => super::dns_legacy::set_interface_dns_wmi(if_index, family, servers),
     }
 }
 
+/// Clears the name servers using an empty string rather than a null pointer.
+///
+/// The two spellings are not equivalent in practice. A null `NameServer` appears to be
+/// ignored on some systems even with `DNS_SETTING_NAMESERVER` set, so the call reports
+/// success while the old servers stay exactly where they were — which is indistinguishable
+/// from a slow read unless you try the other form. Used only after the null form has
+/// been shown not to take effect.
+pub fn clear_interface_dns_empty_string(if_index: u32, family: Family) -> AppResult<()> {
+    match set_interface_dns_settings() {
+        Some(set_fn) => set_via_ip_helper(set_fn, if_index, family, Some("")),
+        None => super::dns_legacy::set_interface_dns_wmi(if_index, family, &[]),
+    }
+}
+
+/// `name_server` of `None` passes a null pointer; `Some("")` passes an empty string.
+/// Both mean "no name servers", and they are not interchangeable on every Windows build.
 fn set_via_ip_helper(
     set_fn: SetInterfaceDnsSettingsFn,
     if_index: u32,
     family: Family,
-    servers: &[IpAddr],
+    name_server: Option<&str>,
 ) -> AppResult<()> {
     let guid = interface_guid(if_index)?;
 
     // DNS_INTERFACE_SETTINGS documents NameServer as "a series of comma- or
     // space-separated DNS servers", e.g. L"1.1.1.1,8.8.8.8".
-    let mut wide: Vec<u16> = if servers.is_empty() {
-        Vec::new()
-    } else {
-        let text = servers
-            .iter()
-            .map(|ip| ip.to_string())
-            .collect::<Vec<_>>()
-            .join(",");
-        text.encode_utf16().chain(std::iter::once(0)).collect()
+    let mut wide: Vec<u16> = match name_server {
+        Some(text) => text.encode_utf16().chain(std::iter::once(0)).collect(),
+        None => Vec::new(),
     };
 
     let name_server = if wide.is_empty() {
