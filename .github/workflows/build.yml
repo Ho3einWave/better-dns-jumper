@@ -57,3 +57,15 @@ jobs:
             # produces the signed installers on tag.
             - name: Build the app (no bundle)
               run: bun run tauri build --no-bundle
+
+            # The executable embeds its own requireAdministrator manifest and Tauri
+            # compiles the frontend into it, so this single file runs as-is — no
+            # installer, no WebView2 beyond what the machine already has. Useful for
+            # testing a fix without cutting a release.
+            - name: Upload the executable
+              uses: actions/upload-artifact@v4
+              with:
+                  name: better-dns-jumper-exe
+                  path: src-tauri/target/release/*.exe
+                  if-no-files-found: error
+                  retention-days: 14
