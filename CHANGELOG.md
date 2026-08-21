@@ -2,6 +2,47 @@
 
 All notable changes to this project are documented here.
 
+## [0.5.1] - 2026-08-21
+
+Fixes for regressions in 0.5.0, all found on real hardware.
+
+### Fixed
+
+- **Auto-detect chose a tunnel adapter instead of Wi-Fi.** Interface detection
+  probed IPv6 before IPv4. A machine with no native IPv6 still has Teredo / 6to4 /
+  ISATAP pseudo-adapters, and Windows returns a route to a global IPv6 address
+  through one of them, so the wrong adapter was reported. IPv4 is probed first now,
+  and the result is validated against the adapter list — anything down, disabled,
+  loopback or a tunnel is rejected.
+- **The activation toggle snapped back to off.** It was reconciled against "is the
+  proxy applied", which plain DNS never sets — it writes the chosen server's own
+  addresses onto the adapter — so the switch was forced off the instant it was
+  switched on. Reconciliation now only ever forces the switch *on*, when the proxy
+  really is applied; the rest is settled by the commands themselves.
+- **Turning off plain DNS left the servers in place, and Reset did nothing.** Both
+  go through the same restore, which verified only that the proxy address was gone.
+  For plain DNS that was true immediately, so the check passed without anything
+  having been restored. Verification now snapshots what is configured beforehand and
+  waits for those specific addresses to disappear.
+- **`127.0.0.2` survived closing the app.** The restore existed in two separate
+  implementations, and only the one behind the toggle had recovery logic. The exit
+  handler and the startup sweep shared the other one, which tried a single method
+  and gave up — so closing the app left the proxy address applied and reopening did
+  not repair it. Both paths now use one shared implementation.
+
+### Changed
+
+- Reverting DNS escalates through three mechanisms rather than trusting one:
+  `SetInterfaceDnsSettings` with a null `NameServer`, the same call with an empty
+  string, then WMI. A null pointer appears to be ignored on some systems even with
+  the corresponding flag set, returning success while changing nothing.
+- The adapter chosen by Auto is logged at info, so the log answers "which interface
+  did it pick" without needing to reproduce anything.
+- Every commit now produces a downloadable executable from CI, and the build is
+  checked on Windows before a tag is cut rather than at release time.
+
+[0.5.1]: https://github.com/Ho3einWave/better-dns-jumper/releases/tag/v0.5.1
+
 ## [0.5.0] - 2026-08-18
 
 ### Fixed
