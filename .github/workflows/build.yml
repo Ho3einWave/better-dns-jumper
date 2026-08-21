@@ -1,0 +1,56 @@
+name: Build
+
+# Validates that the app actually compiles and bundles on Windows.
+#
+# The release workflow only runs on a `v*` tag, so without this a tag push would be the
+# first Windows build of whatever changed — and a failure there means a tag with no
+# artifacts. This runs the same build ahead of time, on every push and pull request.
+on:
+    push:
+        branches: [main]
+    pull_request:
+    workflow_dispatch:
+
+jobs:
+    build:
+        runs-on: windows-latest
+
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup Bun
+              uses: oven-sh/setup-bun@v2
+              with:
+                  bun-version: latest
+
+            - name: Install Rust stable
+              uses: dtolnay/rust-toolchain@stable
+              with:
+                  components: clippy, rustfmt
+
+            - name: Rust cache
+              uses: swatinem/rust-cache@v2
+              with:
+                  workspaces: "./src-tauri -> target"
+
+            - name: Install frontend dependencies
+              run: bun install
+
+            - name: Typecheck and build frontend
+              run: bun run build
+
+            - name: Check formatting
+              run: cargo fmt --manifest-path src-tauri/Cargo.toml --all --check
+
+            - name: Rust unit tests
+              run: cargo test --manifest-path src-tauri/Cargo.toml
+
+            - name: Clippy
+              run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets
+              continue-on-error: true
+
+            - name: Build the app
+              uses: tauri-apps/tauri-action@v0
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

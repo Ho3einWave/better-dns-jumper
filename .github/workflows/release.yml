@@ -42,7 +42,7 @@ jobs:
               with:
                   tagName: ${{ github.ref_name }}
                   releaseName: "Better DNS Jumper ${{ github.ref_name }}"
-                  releaseBody: "See the assets below to download this version."
+                  releaseBody: "See CHANGELOG.md for what changed, and the assets below to download this version."
                   releaseDraft: false
                   prerelease: false
                   uploadPlainBinary: true
