@@ -143,8 +143,11 @@ impl DnsServer {
                 }
             }
             Err(e) => {
-                warn!(
-                    "Could not bind [::1]:53 — IPv6 DNS queries will not be redirected: {}",
+                // Expected, not a fault, on a machine with IPv6 disabled. Logged at info
+                // so it stays visible for diagnosis without crying wolf on every
+                // activation.
+                info!(
+                    "Could not bind [::1]:53, so IPv6 DNS will not be redirected (normal if IPv6 is disabled): {}",
                     e
                 );
                 false

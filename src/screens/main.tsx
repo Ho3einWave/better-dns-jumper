@@ -70,14 +70,18 @@ const Main = () => {
     const { data: interfaces, isLoading: isLoadingInterfaces } =
         useInterfaces();
 
-    const { data: interfaceDnsInfo, refetch: refetchInterfaceDnsInfo } =
-        useGetInterfaceDnsInfo(IfIdx);
+    const {
+        data: interfaceDnsInfo,
+        refetch: refetchInterfaceDnsInfo,
+        isFetching: isFetchingInterfaceDnsInfo,
+    } = useGetInterfaceDnsInfo(IfIdx);
 
-    // Ground truth: the proxy is engaged only if the adapter actually points at one of
-    // its loopback addresses. `isActive` on its own is an optimistic flag set by the
-    // toggle, so it drifts whenever DNS changes outside the app — another tool, a VPN
-    // client, or a previous run that failed to clean up. Reconciling here means the
-    // switch reflects the adapter rather than the last thing the user clicked.
+    // Is the local proxy currently written onto the adapter?
+    //
+    // Deliberately narrow: it asks only about 127.0.0.2 / ::1, which are unambiguously
+    // ours. It is NOT a general "are we active" check — plain DNS writes the server's
+    // own addresses onto the adapter, so a broader check would have to guess, and
+    // guessing wrong is what made the toggle fight the user.
     const isProxyApplied = useMemo(
         () =>
             (interfaceDnsInfo?.dns_servers ?? []).some(
@@ -88,6 +92,10 @@ const Main = () => {
 
     const { mutate: setDns, isPending: isSettingDns } = useSetDns({
         onSuccess: () => {
+            // The command succeeded, so the adapter is configured whether or not the
+            // refetch has landed yet. Waiting for the refetch to decide would let a
+            // stale read flip the switch back.
+            setIsActive(true);
             refetchInterfaceDnsInfo();
         },
         onError: (error) => {
@@ -106,6 +114,7 @@ const Main = () => {
     });
     const { mutate: clearDns, isPending: isClearingDns } = useClearDns({
         onSuccess: () => {
+            setIsActive(false);
             refetchInterfaceDnsInfo();
         },
         onError: (error) => {
@@ -123,19 +132,29 @@ const Main = () => {
     });
 
     useEffect(() => {
-        // Only reconcile once the adapter state has actually loaded; while it is
-        // undefined we would otherwise flip the toggle off on every mount.
-        if (!interfaceDnsInfo) return;
-        // ...and never mid-mutation. A background refetch landing between the click and
-        // the command returning would otherwise momentarily revert the switch, because
-        // the adapter legitimately does not reflect the change yet. The mutation's own
-        // onSuccess/onError settles the state instead.
-        if (isSettingDns || isClearingDns) return;
-        if (isProxyApplied !== isActive) {
-            setIsActive(isProxyApplied);
+        // Correct the switch in one direction only: if the proxy loopback is still on
+        // the adapter, we ARE active, whatever the flag says.
+        //
+        // That is the case that matters for safety. A failed disconnect used to leave
+        // the UI reading "off" while 127.0.0.2 was still applied, so the user would
+        // close the app believing they had already disconnected and be left without
+        // working DNS.
+        //
+        // The opposite direction is deliberately not reconciled. Turning the switch off
+        // because the proxy is absent is wrong for plain DNS, which never sets the proxy
+        // at all, and racy for the rest, since a refetch can land before the adapter
+        // reflects the change. Those transitions are owned by the mutations below.
+        if (isSettingDns || isClearingDns || isFetchingInterfaceDnsInfo) return;
+        if (isProxyApplied && !isActive) {
+            setIsActive(true);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isProxyApplied, interfaceDnsInfo, isSettingDns, isClearingDns]);
+    }, [
+        isProxyApplied,
+        isSettingDns,
+        isClearingDns,
+        isFetchingInterfaceDnsInfo,
+    ]);
 
     const { mutate: testServer, isPending } = useTestServer({
         onSuccess: (data, variables) => {

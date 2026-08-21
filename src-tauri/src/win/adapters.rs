@@ -20,7 +20,7 @@ use std::ffi::c_void;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr};
 use std::ptr;
 
-use log::{error, warn};
+use log::{error, info, warn};
 use serde::Serialize;
 
 use crate::error::{AppError, AppResult};
@@ -74,30 +74,102 @@ pub fn list_interfaces() -> AppResult<Vec<NetworkInterface>> {
 
 /// Picks the interface Windows would route internet traffic over.
 ///
-/// Uses `GetBestInterfaceEx` rather than `GetBestInterface`: the latter takes a bare
-/// IPv4 address, so on an IPv6-only network it has no route to score and the app would
-/// fall back to the wrong adapter. This tries IPv6 first when the machine has IPv6
-/// connectivity at all, then IPv4.
+/// Probes IPv4 first, then IPv6, and validates the answer against the adapter list.
 ///
-/// The destinations are only used as routing probes — nothing is sent to them. They are
-/// well-known public resolver addresses purely because they are guaranteed to be off-link.
+/// Two traps here, both of which have produced the wrong adapter in practice:
+///
+/// - **Probing IPv6 first picks tunnels.** A machine with no native IPv6 still has
+///   Teredo / 6to4 / ISATAP pseudo-adapters, and Windows will return a route to a global
+///   IPv6 address through one of them. `GetBestInterfaceEx` then reports the tunnel,
+///   not the Wi-Fi or Ethernet adapter the user actually browses through.
+/// - **A route is not the same as a usable adapter.** Even on IPv4 the best route can
+///   point at something that is down or synthetic, so the result is checked against
+///   `list_interfaces()` before it is trusted.
+///
+/// The destinations are only routing probes — nothing is sent to them. They are
+/// well-known public resolver addresses purely because they are guaranteed off-link.
 pub fn best_interface_index() -> AppResult<u32> {
-    // Try IPv6 first, then IPv4. On a dual-stack machine both resolve to the same
-    // adapter; on a single-stack machine only one of them can succeed.
+    // IPv4 first: it is what almost every machine actually routes over, and it cannot
+    // be answered by an IPv6 tunnel adapter.
     let candidates: [IpAddr; 2] = [
-        IpAddr::V6(Ipv6Addr::new(0x2001, 0x4860, 0x4860, 0, 0, 0, 0, 0x8888)),
         IpAddr::V4(Ipv4Addr::new(8, 8, 8, 8)),
+        IpAddr::V6(Ipv6Addr::new(0x2001, 0x4860, 0x4860, 0, 0, 0, 0, 0x8888)),
     ];
 
+    // If enumeration fails we cannot validate, so accept the raw routing answer rather
+    // than refusing to pick anything at all.
+    let interfaces = list_interfaces().unwrap_or_default();
+
+    let mut unvalidated: Option<u32> = None;
     for dest in candidates {
         if let Some(index) = best_interface_for(dest) {
-            return Ok(index);
+            if interfaces.is_empty() || is_usable_adapter(&interfaces, index) {
+                // Logged at info, not debug: release builds log at info, and "which
+                // adapter did Auto pick" is the first question when DNS is applied to
+                // the wrong one.
+                let name = interfaces
+                    .iter()
+                    .find(|i| i.interface_index == index)
+                    .map(|i| i.name.as_str())
+                    .unwrap_or("unknown");
+                info!(
+                    "Auto-selected interface {} ({}) via {} routing probe",
+                    index,
+                    name,
+                    if dest.is_ipv4() { "IPv4" } else { "IPv6" }
+                );
+                return Ok(index);
+            }
+            warn!(
+                "Routing probe to {} chose interface {}, which is not a usable adapter — ignoring",
+                dest, index
+            );
+            unvalidated.get_or_insert(index);
         }
+    }
+
+    // Nothing routable passed validation. Fall back to the first adapter that is up,
+    // real, and has a default gateway — which is what "connected to a network" means.
+    if let Some(iface) = interfaces
+        .iter()
+        .find(|i| is_usable(i) && !i.gateways.is_empty())
+    {
+        warn!(
+            "Falling back to interface {} ({}) by gateway",
+            iface.interface_index, iface.name
+        );
+        return Ok(iface.interface_index);
+    }
+
+    // Last resort: whatever the routing table said, even though it looked synthetic.
+    if let Some(index) = unvalidated {
+        warn!(
+            "Falling back to unvalidated routing result, interface {}",
+            index
+        );
+        return Ok(index);
     }
 
     // No route to the internet at all — a disconnected machine, not a bug. The caller
     // turns this into an actionable message instead of a Win32 code.
     Err(AppError::NoActiveInterface)
+}
+
+// IANA ifType values (netioapi.h) for the adapter kinds that must never be auto-selected.
+const IF_TYPE_SOFTWARE_LOOPBACK: u32 = 24;
+const IF_TYPE_TUNNEL: u32 = 131;
+
+fn is_usable(iface: &NetworkInterface) -> bool {
+    iface.is_up
+        && !iface.is_admin_disabled
+        && iface.if_type != IF_TYPE_SOFTWARE_LOOPBACK
+        && iface.if_type != IF_TYPE_TUNNEL
+}
+
+fn is_usable_adapter(interfaces: &[NetworkInterface], index: u32) -> bool {
+    interfaces
+        .iter()
+        .any(|i| i.interface_index == index && is_usable(i))
 }
 
 fn best_interface_for(dest: IpAddr) -> Option<u32> {
