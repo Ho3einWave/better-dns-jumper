@@ -93,3 +93,39 @@ impl DnsRules {
         }
     }
 }
+
+/// Built-in blocklist shipped with the app: well-known ad/tracker domains.
+/// All rules are disabled by default — the user opts in by toggling them.
+/// Seeded into the store on first launch; afterwards the user's own
+/// add/edit/delete choices are the source of truth.
+pub fn default_rules() -> Vec<DnsRule> {
+    const DOMAINS: &[&str] = &[
+        "*.doubleclick.net",
+        "*.googlesyndication.com",
+        "*.googleadservices.com",
+        "*.adservice.google.com",
+        "*.ads.yahoo.com",
+        "*.advertising.com",
+        "*.adsrvr.org",
+        "*.criteo.com",
+        "*.criteo.net",
+        "*.outbrain.com",
+        "*.taboola.com",
+        "*.pubmatic.com",
+        "*.rubiconproject.com",
+        "*.moatads.com",
+        "*.scorecardresearch.com",
+        "*.quantserve.com",
+    ];
+    DOMAINS
+        .iter()
+        .enumerate()
+        .map(|(i, domain)| DnsRule {
+            id: format!("default-adblock-{:02}", i + 1),
+            domain: domain.to_string(),
+            response: "0.0.0.0".to_string(),
+            enabled: false,
+            record_type: "A".to_string(),
+        })
+        .collect()
+}

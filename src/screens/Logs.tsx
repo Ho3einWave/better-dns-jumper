@@ -16,6 +16,7 @@ import { Copy } from "../components/icons/Copy";
 import { Broom } from "../components/icons/Broom";
 import { LOG_LEVELS, type AppLogEntry, type LogLevel } from "../types";
 import { errorMessage } from "../utils/errorMessage";
+import { useTranslation } from "react-i18next";
 
 const LEVEL_COLOR: Record<
     string,
@@ -33,6 +34,7 @@ const shortTarget = (target: string) =>
     target.replace(/^better_dns_jumper_lib::/, "");
 
 const Logs = () => {
+    const { t } = useTranslation();
     const [search, setSearch] = useState("");
     const [debouncedSearch, setDebouncedSearch] = useState("");
     const [debounceTimer, setDebounceTimer] = useState<ReturnType<
@@ -86,13 +88,13 @@ const Logs = () => {
                 logs.map(formatLine).join("\n"),
             );
             addToast({
-                title: `Copied ${logs.length} log line${logs.length === 1 ? "" : "s"}`,
+                title: t("tooltips.copied_logs", { count: logs.length }),
                 color: "success",
                 icon: <Copy className="text-xl" />,
             });
         } catch (e) {
             addToast({
-                title: "Could not copy logs",
+                title: t("tooltips.logs_copied_failed"),
                 description: errorMessage(e),
                 color: "danger",
             });
@@ -103,10 +105,10 @@ const Logs = () => {
         if (!logPath) return;
         try {
             await navigator.clipboard.writeText(logPath);
-            addToast({ title: "Log file path copied", color: "success" });
+            addToast({ title: t("tooltips.log_path_copied"), color: "success" });
         } catch (e) {
             addToast({
-                title: "Could not copy path",
+                title: t("tooltips.copy_path_failed"),
                 description: errorMessage(e),
                 color: "danger",
             });
@@ -117,7 +119,7 @@ const Logs = () => {
         openLogDir.mutate(undefined, {
             onError: (e) =>
                 addToast({
-                    title: "Could not open the log folder",
+                    title: t("tooltips.open_folder_failed"),
                     description: errorMessage(e),
                     color: "danger",
                 }),
@@ -128,13 +130,13 @@ const Logs = () => {
         clearLogs.mutate(undefined, {
             onSuccess: () =>
                 addToast({
-                    title: "Log file cleared",
+                    title: t("tooltips.logs_cleared"),
                     color: "success",
                     icon: <Broom className="text-xl" />,
                 }),
             onError: (e) =>
                 addToast({
-                    title: "Could not clear the log file",
+                    title: t("tooltips.logs_clear_failed"),
                     description: errorMessage(e),
                     color: "danger",
                 }),
@@ -146,15 +148,15 @@ const Logs = () => {
         <div className="flex flex-col items-center justify-center h-full">
             <div className="absolute left-20 inner-container-size bg-zinc-900/50 rounded-2xl flex flex-col overflow-hidden gap-2 py-2">
                 <div className="px-4 flex items-center justify-between shrink-0">
-                    <span>Application Logs</span>
+                    <span>{t("other.app_logs")}</span>
                     <div className="flex items-center gap-2">
                         <Tooltip
-                            content={isLive ? "Pause updates" : "Resume updates"}
+                            content={isLive ? t("tooltips.pause_updates") : t("tooltips.resume_updates")}
                             placement="bottom"
                         >
                             <div className="flex items-center gap-1.5">
                                 <span className="text-xs text-zinc-400">
-                                    Live
+                                    {t("other.live")}
                                 </span>
                                 <Switch
                                     size="sm"
@@ -170,7 +172,7 @@ const Logs = () => {
                 <div className="flex items-center gap-2 px-4 shrink-0">
                     <Input
                         size="sm"
-                        placeholder="Search messages and targets..."
+                        placeholder={t("tooltips.search_logs")}
                         value={search}
                         onValueChange={handleSearchChange}
                         className="flex-1"
@@ -182,7 +184,7 @@ const Logs = () => {
                         }}
                     />
                     <Button size="sm" variant="flat" onPress={handleOpenFolder}>
-                        Open Folder
+                        {t("other.open_folder")}
                     </Button>
                     <Button
                         size="sm"
@@ -190,7 +192,7 @@ const Logs = () => {
                         onPress={handleCopyAll}
                         isDisabled={logs.length === 0}
                     >
-                        Copy
+                        {t("other.copy")}
                     </Button>
                     <Button
                         size="sm"
@@ -199,7 +201,7 @@ const Logs = () => {
                         onPress={() => setIsClearModalOpen(true)}
                         isLoading={clearLogs.isPending}
                     >
-                        Clear
+                        {t("other.clear")}
                     </Button>
                 </div>
 
@@ -229,7 +231,7 @@ const Logs = () => {
                             className="h-6 min-w-0 px-2 text-xs"
                             onPress={() => setActiveLevels([])}
                         >
-                            Reset
+                            {t("other.reset")}
                         </Button>
                     )}
                 </div>
@@ -237,17 +239,17 @@ const Logs = () => {
                 <div className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-1 px-4">
                     {error ? (
                         <div className="flex items-center justify-center h-32 text-danger text-sm text-center px-4">
-                            {errorMessage(error, "Could not read the log file")}
+                            {errorMessage(error, t("tooltips.no_logs"))}
                         </div>
                     ) : isLoading ? (
                         <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
-                            Reading log file...
+                            {t("tooltips.reading_log")}
                         </div>
                     ) : logs.length === 0 ? (
                         <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
                             {debouncedSearch || activeLevels.length > 0
-                                ? "No log entries match the current filter"
-                                : "No log entries yet"}
+                                ? t("tooltips.no_logs_match")
+                                : t("tooltips.no_logs")}
                         </div>
                     ) : (
                         logs.map((entry) => (
@@ -282,7 +284,7 @@ const Logs = () => {
                 </div>
 
                 {logPath && (
-                    <Tooltip content="Click to copy" placement="top">
+                    <Tooltip content={t("tooltips.click_to_copy")} placement="top">
                         <button
                             type="button"
                             onClick={handleCopyPath}
@@ -298,10 +300,10 @@ const Logs = () => {
                 isOpen={isClearModalOpen}
                 onClose={() => setIsClearModalOpen(false)}
                 onConfirm={handleConfirmClear}
-                title="Clear the log file?"
-                message="This permanently empties better-dns-jumper.log. Do this only after you have saved anything you need for a bug report."
-                confirmText="Clear"
-                cancelText="Cancel"
+                title={t("tooltips.clear_log_title")}
+                message={t("tooltips.clear_log_msg")}
+                confirmText={t("tooltips.clear")}
+                cancelText={t("tooltips.cancel")}
                 confirmColor="danger"
             />
         </div>

@@ -32,14 +32,14 @@ clap = { version = "4", features = ["derive"] }
 anyhow = "1"
 hickory-server = { version = "0.25.2", features = ["resolver"] }
 hickory-client = "0.25.2"
-hickory-resolver = { version = "*", features = [
+hickory-resolver = { version = "=0.25.2", features = [
     "https-aws-lc-rs",
     "tls-aws-lc-rs",
     "quic-aws-lc-rs",
     "h3-aws-lc-rs",
     "webpki-roots",
 ] }
-hickory-proto = { version = "*", features = [
+hickory-proto = { version = "=0.25.2", features = [
     "https-aws-lc-rs",
     "webpki-roots",
 ] }

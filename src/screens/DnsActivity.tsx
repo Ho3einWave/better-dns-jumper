@@ -10,13 +10,16 @@ import {
     useSaveDnsRule,
     useDeleteDnsRule,
     useToggleDnsRule,
+    useResetDnsRules,
 } from "../hooks/useDnsRules";
 import DnsRuleModal from "../components/DnsRuleModal";
 import ConfirmModal from "../components/ConfirmModal";
 import PredefinedIps from "../components/Setting/PredefinedIps";
 import type { DnsQueryLog, DnsRule } from "../types";
+import { useTranslation } from "react-i18next";
 
 const DnsActivity = () => {
+    const { t } = useTranslation();
     const [searchFilter, setSearchFilter] = useState("");
     const [debouncedFilter, setDebouncedFilter] = useState("");
     const [debounceTimer, setDebounceTimer] = useState<ReturnType<
@@ -30,6 +33,7 @@ const DnsActivity = () => {
     const saveDnsRule = useSaveDnsRule();
     const deleteDnsRule = useDeleteDnsRule();
     const toggleDnsRule = useToggleDnsRule();
+    const resetDnsRules = useResetDnsRules();
 
     const [isRuleModalOpen, setIsRuleModalOpen] = useState(false);
     const [ruleModalMode, setRuleModalMode] = useState<"add" | "edit">("add");
@@ -37,6 +41,7 @@ const DnsActivity = () => {
 
     const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
     const [deletingRuleId, setDeletingRuleId] = useState<string | null>(null);
+    const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
     const handleSearchChange = (value: string) => {
         setSearchFilter(value);
@@ -74,6 +79,11 @@ const DnsActivity = () => {
         }
         setIsDeleteModalOpen(false);
         setDeletingRuleId(null);
+    };
+
+    const handleConfirmReset = async () => {
+        await resetDnsRules.mutateAsync();
+        setIsResetModalOpen(false);
     };
 
     const handleToggleRule = async (id: string) => {
@@ -164,12 +174,12 @@ const DnsActivity = () => {
                         panel: "flex-1 overflow-hidden flex flex-col",
                     }}
                 >
-                    <Tab key="logs" title="Query Logs">
+                    <Tab key="logs" title={t("other.query_logs")}>
                         <div className="flex flex-col gap-2 flex-1 min-h-0 px-2 pb-2">
                             <div className="flex items-center gap-2 px-2 shrink-0">
                                 <Input
                                     size="sm"
-                                    placeholder="Search domains..."
+                                    placeholder={t("tooltips.search_domains")}
                                     value={searchFilter}
                                     onValueChange={handleSearchChange}
                                     className="flex-1"
@@ -187,13 +197,13 @@ const DnsActivity = () => {
                                     onPress={() => clearLogs.mutate()}
                                     isLoading={clearLogs.isPending}
                                 >
-                                    Clear
+                                    {t("tooltips.clear")}
                                 </Button>
                             </div>
                             <div className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-1 px-2">
                                 {logs.length === 0 ? (
                                     <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
-                                        No DNS queries logged yet
+                                        {t("tooltips.no_queries")}
                                     </div>
                                 ) : (
                                     logs.map((log) => (
@@ -249,7 +259,7 @@ const DnsActivity = () => {
                                                         )
                                                     }
                                                 >
-                                                    Modify
+                                                    {t("tooltips.modify")}
                                                 </Button>
                                             </div>
                                         </div>
@@ -258,20 +268,27 @@ const DnsActivity = () => {
                             </div>
                         </div>
                     </Tab>
-                    <Tab key="rules" title="DNS Rules">
+                    <Tab key="rules" title={t("other.dns_rules")}>
                         <div className="flex flex-col gap-2 flex-1 min-h-0 px-2 pb-2">
                             <div className="flex items-center justify-between px-2 shrink-0">
                                 <span className="text-sm text-zinc-400">
-                                    {rules.length} rule
-                                    {rules.length !== 1 ? "s" : ""}
+                                    {t("tooltips.rules_count", { count: rules.length })}
                                 </span>
                                 <div className="flex gap-2">
                                     <Button
                                         size="sm"
                                         variant="flat"
+                                        color="default"
+                                        onPress={() => setIsResetModalOpen(true)}
+                                    >
+                                        {t("tooltips.restore_defaults")}
+                                    </Button>
+                                    <Button
+                                        size="sm"
+                                        variant="flat"
                                         onPress={handleImportRules}
                                     >
-                                        Import
+                                        {t("tooltips.import")}
                                     </Button>
                                     <Button
                                         size="sm"
@@ -279,7 +296,7 @@ const DnsActivity = () => {
                                         onPress={handleExportRules}
                                         isDisabled={rules.length === 0}
                                     >
-                                        Export
+                                        {t("tooltips.export")}
                                     </Button>
                                     <Button
                                         size="sm"
@@ -287,14 +304,14 @@ const DnsActivity = () => {
                                         variant="flat"
                                         onPress={handleAddRule}
                                     >
-                                        Add Rule
+                                        {t("tooltips.add_rule")}
                                     </Button>
                                 </div>
                             </div>
                             <div className="overflow-y-auto flex-1 min-h-0 flex flex-col gap-1 px-2">
                                 {rules.length === 0 ? (
                                     <div className="flex items-center justify-center h-32 text-zinc-500 text-sm">
-                                        No DNS rules configured
+                                        {t("tooltips.no_rules")}
                                     </div>
                                 ) : (
                                     rules.map((rule) => (
@@ -358,7 +375,7 @@ const DnsActivity = () => {
                             </div>
                         </div>
                     </Tab>
-                    <Tab key="predefined-ips" title="Predefined IPs">
+                    <Tab key="predefined-ips" title={t("other.predefined_ips_tab")}>
                         <div className="flex flex-col gap-2 flex-1 min-h-0 px-4 py-2">
                             <PredefinedIps />
                         </div>
@@ -384,11 +401,22 @@ const DnsActivity = () => {
                     setDeletingRuleId(null);
                 }}
                 onConfirm={handleConfirmDelete}
-                title="Delete DNS Rule?"
-                message="This will permanently remove this DNS rule. This action cannot be undone."
-                confirmText="Delete"
-                cancelText="Cancel"
+                title={t("tooltips.delete_rule_title")}
+                message={t("tooltips.delete_rule_msg")}
+                confirmText={t("tooltips.delete")}
+                cancelText={t("tooltips.cancel")}
                 confirmColor="danger"
+            />
+
+            <ConfirmModal
+                isOpen={isResetModalOpen}
+                onClose={() => setIsResetModalOpen(false)}
+                onConfirm={handleConfirmReset}
+                title={t("tooltips.restore_rules_title")}
+                message={t("tooltips.restore_rules_msg")}
+                confirmText={t("tooltips.restore")}
+                cancelText={t("tooltips.cancel")}
+                confirmColor="primary"
             />
         </div>
     );

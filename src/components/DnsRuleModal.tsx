@@ -13,6 +13,7 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import type { DnsRule } from "../types";
 import { usePredefinedIps } from "../stores/tauriPredefinedIpsStore";
+import { useTranslation } from "react-i18next";
 
 const isValidIPv4 = (ip: string): boolean => {
     const ipRegex =
@@ -56,6 +57,7 @@ const DnsRuleModal = ({
     const [domainError, setDomainError] = useState("");
     const [responseError, setResponseError] = useState("");
 
+    const { t } = useTranslation();
     const { ips: predefinedIps } = usePredefinedIps();
 
     useEffect(() => {
@@ -88,7 +90,7 @@ const DnsRuleModal = ({
     const handleDomainChange = (value: string) => {
         setDomain(value);
         if (value.trim() && !isValidDomainPattern(value)) {
-            setDomainError("Must be a valid domain or wildcard pattern (e.g. *.example.com)");
+            setDomainError(t("validation.domain_invalid"));
         } else {
             setDomainError("");
         }
@@ -97,7 +99,7 @@ const DnsRuleModal = ({
     const handleResponseChange = (value: string) => {
         setResponse(value);
         if (value.trim() && !isValidIPv4(value)) {
-            setResponseError("Must be a valid IPv4 address");
+            setResponseError(t("validation.response_invalid"));
         } else {
             setResponseError("");
         }
@@ -105,19 +107,19 @@ const DnsRuleModal = ({
 
     const handleSave = async () => {
         if (!domain.trim()) {
-            setDomainError("Domain is required");
+            setDomainError(t("validation.domain_required"));
             return;
         }
         if (!isValidDomainPattern(domain)) {
-            setDomainError("Must be a valid domain or wildcard pattern (e.g. *.example.com)");
+            setDomainError(t("validation.domain_invalid"));
             return;
         }
         if (!response.trim()) {
-            setResponseError("Response IP is required");
+            setResponseError(t("validation.response_required"));
             return;
         }
         if (!isValidIPv4(response)) {
-            setResponseError("Must be a valid IPv4 address");
+            setResponseError(t("validation.response_invalid"));
             return;
         }
 
@@ -146,18 +148,18 @@ const DnsRuleModal = ({
         >
             <ModalContent>
                 <ModalHeader>
-                    {mode === "add" ? "Add DNS Rule" : "Edit DNS Rule"}
+                    {mode === "add" ? t("tooltips.add_rule") : t("tooltips.edit")}
                 </ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-3">
                         <Input
                             radius="lg"
-                            label="Domain"
+                            label={t("tooltips.domain")}
                             value={domain}
                             onValueChange={handleDomainChange}
                             size="sm"
-                            placeholder="example.com or *.ads.example.com"
-                            description="Exact domain or wildcard pattern"
+                            placeholder={t("placeholders.domain_placeholder")}
+                            description={t("descriptions.domain_desc")}
                             isInvalid={!!domainError}
                             errorMessage={domainError}
                         />
@@ -183,17 +185,17 @@ const DnsRuleModal = ({
                         <div className="flex gap-2">
                             <Input
                                 radius="lg"
-                                label="Response IP"
+                                label={t("tooltips.response_ip")}
                                 value={response}
                                 onValueChange={handleResponseChange}
                                 size="sm"
-                                placeholder="0.0.0.0"
-                                description="IPv4 address to return"
+                                placeholder={t("placeholders.response_ip_placeholder")}
+                                description={t("descriptions.response_ip_desc")}
                                 isInvalid={!!responseError}
                                 errorMessage={responseError}
                             />
                             <Select
-                                label="Record Type"
+                                label={t("tooltips.record_type")}
                                 radius="lg"
                                 selectedKeys={[recordType]}
                                 onSelectionChange={(keys) => {
@@ -214,7 +216,7 @@ const DnsRuleModal = ({
                                 onValueChange={setEnabled}
                             />
                             <span className="text-sm">
-                                {enabled ? "Enabled" : "Disabled"}
+                                {enabled ? t("other.enabled") : t("other.disabled")}
                             </span>
                         </div>
                     </div>

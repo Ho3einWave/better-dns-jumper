@@ -3,8 +3,10 @@ import { useEffect, useState } from "react";
 import { useTestDomain } from "../../stores/tauriSettingStore";
 import { Button } from "@heroui/button";
 import { Save } from "../icons/Save";
+import { useTranslation } from "react-i18next";
 
 const TestDomain = () => {
+    const { t } = useTranslation();
     const [testDomainValue, setTestDomainValue] = useState<string>("");
 
     const {
@@ -27,9 +29,9 @@ const TestDomain = () => {
     return (
         <div className="flex items-center justify-between gap-2">
             <div>
-                <span className="text-sm font-medium">Test Domain</span>
+                <span className="text-sm font-medium">{t("tooltips.test_domain")}</span>
                 <p className="text-xs text-zinc-400">
-                    This will be used to test the DNS server.
+                    {t("tooltips.test_domain_desc")}
                 </p>
             </div>
             <div className="flex items-center gap-1">

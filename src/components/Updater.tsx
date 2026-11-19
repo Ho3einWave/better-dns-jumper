@@ -10,8 +10,10 @@ import {
 import { useUpdater } from "../hooks/useUpdater";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { getReleaseUrl } from "../constants/updater";
+import { useTranslation } from "react-i18next";
 
 const Updater = () => {
+    const { t } = useTranslation();
     const {
         isDownloading,
         isInstalling,
@@ -60,19 +62,18 @@ const Updater = () => {
                     {() => (
                         <>
                             <ModalHeader className="flex flex-col gap-1">
-                                Update Available
+                                {t("tooltips.update_available")}
                             </ModalHeader>
                             <ModalBody>
                                 {update && (
                                     <div className="space-y-3">
                                         <p className="text-sm">
-                                            A new version of the app is
-                                            available!
+                                            {t("tooltips.update_available_msg")}
                                         </p>
                                         <div className="bg-default-100 rounded-lg p-3 space-y-2">
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-default-500">
-                                                    Current Version:
+                                                    {t("tooltips.current_version")}:
                                                 </span>
                                                 <span className="font-medium">
                                                     {update.currentVersion}
@@ -80,7 +81,7 @@ const Updater = () => {
                                             </div>
                                             <div className="flex justify-between text-sm">
                                                 <span className="text-default-500">
-                                                    New Version:
+                                                    {t("tooltips.new_version")}:
                                                 </span>
                                                 <span className="font-medium text-primary">
                                                     {update.version}
@@ -95,13 +96,13 @@ const Updater = () => {
                                             onPress={handleViewRelease}
                                             className="w-full"
                                         >
-                                            View Release Notes
+                                            {t("tooltips.view_release_notes")}
                                         </Button>
 
                                         {isDownloading && (
                                             <div className="space-y-2">
                                                 <div className="flex justify-between text-sm">
-                                                    <span>Downloading...</span>
+                                                    <span>{t("tooltips.downloading")}</span>
                                                     <span className="font-medium">
                                                         {downloadProgress}%
                                                     </span>
@@ -134,11 +135,10 @@ const Updater = () => {
                                         {isInstalling && (
                                             <div className="text-center py-4">
                                                 <p className="text-sm font-medium text-primary">
-                                                    Installing update...
+                                                    {t("tooltips.installing")}
                                                 </p>
                                                 <p className="text-xs text-default-500 mt-2">
-                                                    The app will restart
-                                                    automatically
+                                                    {t("tooltips.app_will_restart")}
                                                 </p>
                                             </div>
                                         )}
@@ -152,7 +152,7 @@ const Updater = () => {
                                     onPress={closeModal}
                                     isDisabled={isDownloading || isInstalling}
                                 >
-                                    Cancel
+                                    {t("tooltips.cancel")}
                                 </Button>
                                 <Button
                                     color="primary"
@@ -160,11 +160,7 @@ const Updater = () => {
                                     isLoading={isDownloading || isInstalling}
                                     isDisabled={isDownloading || isInstalling}
                                 >
-                                    {isDownloading
-                                        ? "Downloading..."
-                                        : isInstalling
-                                        ? "Installing..."
-                                        : "Update Now"}
+                                    {t("tooltips.update_now")}
                                 </Button>
                             </ModalFooter>
                         </>

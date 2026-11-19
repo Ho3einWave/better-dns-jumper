@@ -11,8 +11,10 @@ import { PROTOCOLS, type SERVER } from "../types";
 import { useTestServer, type ServerTestResult } from "../hooks/useDns";
 import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
 import { getBootstrapParams } from "../utils/bootstrap";
+import { useTranslation } from "react-i18next";
 
 const Servers = () => {
+    const { t } = useTranslation();
     const {
         load,
         servers,
@@ -187,8 +189,8 @@ const Servers = () => {
     };
 
     const deletingServerName = deletingServerKey
-        ? servers.find((s) => s.key === deletingServerKey)?.name ?? "this server"
-        : "this server";
+        ? servers.find((s) => s.key === deletingServerKey)?.name ?? t("tooltips.this_server")
+        : t("tooltips.this_server");
 
     return (
         <div className="flex flex-col items-center justify-center h-full">
@@ -207,9 +209,12 @@ const Servers = () => {
                             tabList: "gap-3",
                         }}
                     >
-                        <Tab key="all" title="All" />
+                        <Tab key="all" title={t("tabs.all")} />
                         {PROTOCOLS.map((protocol) => (
-                            <Tab key={protocol.key} title={protocol.name} />
+                            <Tab
+                                key={protocol.key}
+                                title={t(`protocols.${protocol.key}.name`)}
+                            />
                         ))}
                     </Tabs>
                 </div>
@@ -219,7 +224,7 @@ const Servers = () => {
                     <Input
                         size="sm"
                         isClearable
-                        placeholder="Search servers..."
+                        placeholder={t("tooltips.search_servers")}
                         value={searchQuery}
                         onValueChange={setSearchQuery}
                         className="flex-1"
@@ -233,7 +238,7 @@ const Servers = () => {
                         variant="flat"
                         onPress={handleResetServers}
                     >
-                        Restore Defaults
+                        {t("tooltips.restore_defaults")}
                     </Button>
                     <Button
                         size="sm"
@@ -241,7 +246,7 @@ const Servers = () => {
                         variant="flat"
                         onPress={handleOpenAddModal}
                     >
-                        + Add
+                        + {t("tooltips.add")}
                     </Button>
                 </div>
 
@@ -249,7 +254,7 @@ const Servers = () => {
                 <div className="overflow-y-auto px-3 pb-3 flex flex-col gap-2 flex-1">
                     {filteredServers.length === 0 ? (
                         <div className="flex items-center justify-center flex-1 text-zinc-500 text-sm">
-                            No servers found
+                            {t("tooltips.no_servers")}
                         </div>
                     ) : (
                         filteredServers.map((server) => (
@@ -282,10 +287,10 @@ const Servers = () => {
                 isOpen={isConfirmModalOpen}
                 onClose={() => setIsConfirmModalOpen(false)}
                 onConfirm={handleConfirmReset}
-                title="Restore Default Servers?"
-                message="This will replace all your custom servers with the default server list. This action cannot be undone."
-                confirmText="Restore"
-                cancelText="Cancel"
+                title={t("tooltips.restore_defaults_title")}
+                message={t("tooltips.restore_defaults_msg")}
+                confirmText={t("tooltips.restore")}
+                cancelText={t("tooltips.cancel")}
                 confirmColor="danger"
             />
 
@@ -293,10 +298,10 @@ const Servers = () => {
                 isOpen={!!deletingServerKey}
                 onClose={() => setDeletingServerKey(null)}
                 onConfirm={handleConfirmDelete}
-                title="Delete Server?"
-                message={`Are you sure you want to delete "${deletingServerName}"? This action cannot be undone.`}
-                confirmText="Delete"
-                cancelText="Cancel"
+                title={t("tooltips.delete_server_title")}
+                message={t("tooltips.delete_server_msg", { name: deletingServerName })}
+                confirmText={t("tooltips.delete")}
+                cancelText={t("tooltips.cancel")}
                 confirmColor="danger"
             />
         </div>

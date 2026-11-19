@@ -2,8 +2,10 @@ import { Select, SelectItem } from "@heroui/select";
 import { useBootstrapResolverKey } from "../../stores/tauriSettingStore";
 import { useServerStore } from "../../stores/useServersStore";
 import { useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 
 const BootstrapResolver = () => {
+    const { t } = useTranslation();
     const { servers, load } = useServerStore();
     const {
         data: bootstrapResolverKey,
@@ -32,10 +34,9 @@ const BootstrapResolver = () => {
     return (
         <div className="flex items-center justify-between gap-2">
             <div className="flex-shrink-0">
-                <span className="text-sm font-medium">Bootstrap Resolver</span>
+                <span className="text-sm font-medium">{t("tooltips.bootstrap_resolver")}</span>
                 <p className="text-xs text-zinc-400 max-w-52">
-                    Use a trusted DNS server to resolve encrypted DNS server
-                    domains. Helps bypass DNS poisoning.
+                    {t("tooltips.bootstrap_resolver_desc")}
                 </p>
             </div>
             <Select

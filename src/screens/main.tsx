@@ -26,8 +26,10 @@ import { useServerStore } from "../stores/useServersStore";
 import { useDnsState } from "../hooks/useDnsState";
 import { useBootstrapResolverKey } from "../stores/tauriSettingStore";
 import { getBootstrapParams } from "../utils/bootstrap";
+import { useTranslation } from "react-i18next";
 
 const Main = () => {
+    const { t } = useTranslation();
     const { servers, isLoading: isLoadingServers, load } = useServerStore();
     const { data: bootstrapResolverKey } = useBootstrapResolverKey();
 
@@ -92,20 +94,14 @@ const Main = () => {
 
     const { mutate: setDns, isPending: isSettingDns } = useSetDns({
         onSuccess: () => {
-            // The command succeeded, so the adapter is configured whether or not the
-            // refetch has landed yet. Waiting for the refetch to decide would let a
-            // stale read flip the switch back.
             setIsActive(true);
             refetchInterfaceDnsInfo();
         },
         onError: (error) => {
-            // The optimistic toggle already flipped to "connected"; the DNS change did
-            // not happen, so put the switch back rather than showing a state the
-            // adapter is not actually in.
             setIsActive(false);
             refetchInterfaceDnsInfo();
             addToast({
-                title: "Could not apply DNS settings",
+                title: t("tooltips.apply_failed"),
                 description: errorMessage(error),
                 color: "danger",
                 timeout: 8000,
@@ -118,12 +114,10 @@ const Main = () => {
             refetchInterfaceDnsInfo();
         },
         onError: (error) => {
-            // Leave the toggle on: clear_dns only reports failure when the adapter is
-            // still pointed at the proxy, which means DNS is still being served by it.
             setIsActive(true);
             refetchInterfaceDnsInfo();
             addToast({
-                title: "Could not restore DNS settings",
+                title: t("tooltips.restore_failed"),
                 description: errorMessage(error),
                 color: "danger",
                 timeout: 8000,
@@ -173,7 +167,6 @@ const Main = () => {
             }
         },
         onError: (error, variables) => {
-            // Find the server key from the server string
             const serverKey = servers.find(
                 (s) =>
                     s.servers[0] === variables.server ||
@@ -185,7 +178,7 @@ const Main = () => {
                     newMap.set(serverKey, {
                         success: false,
                         latency: 0,
-                        error: errorMessage(error, "Test failed"),
+                        error: errorMessage(error, t("tooltips.failed")),
                     });
                     return newMap;
                 });
@@ -228,14 +221,14 @@ const Main = () => {
     const { mutate: clearDnsCache } = useClearDnsCache({
         onSuccess: () => {
             addToast({
-                title: "DNS cleared",
+                title: t("tooltips.dns_cleared"),
                 color: "success",
                 icon: <Broom className="text-xl" />,
             });
         },
         onError: (error) => {
             addToast({
-                title: "Could not clear the DNS cache",
+                title: t("tooltips.clear_failed"),
                 description: errorMessage(error),
                 color: "danger",
                 icon: <Broom className="text-xl" />,
@@ -276,7 +269,7 @@ const Main = () => {
                 return (
                     <Tooltip
                         key={server}
-                        content="Click to copy"
+                        content={t("tooltips.click_to_copy")}
                         placement="top"
                     >
                         <div
@@ -415,13 +408,13 @@ const Main = () => {
                         const testResult = testResults.get(server.key);
                         const latencyText =
                             testResult === "testing"
-                                ? "Testing..."
+                                ? t("tooltips.testing")
                                 : testResult?.success
                                 ? `${testResult.latency}ms`
                                 : testResult === null
                                 ? null
                                 : testResult
-                                ? "Failed"
+                                ? t("tooltips.failed")
                                 : null;
 
                         // Determine color based on availability
@@ -488,20 +481,25 @@ const Main = () => {
                     }
                 >
                     {PROTOCOLS.map((protocol) => (
-                        <Tab key={protocol.key} title={protocol.name} />
+                        <Tab
+                            key={protocol.key}
+                            title={t(`protocols.${protocol.key}.name`)}
+                        />
                     ))}
                 </Tabs>
 
                 <div className="flex flex-col gap-2 bg-zinc-900 rounded-md p-2 text-nowrap text-sm">
                     <div className="flex justify-between">
                         <div>
-                            Server
-                            {dnsServerData?.type === "dns" ? "s" : ""}:
+                            {dnsServerData?.type === "dns"
+                                ? t("tooltips.servers_label")
+                                : t("tooltips.server")}
+                            :
                         </div>
                         <div>{renderDnsServers()}</div>
                     </div>
                     <div className="flex justify-between">
-                        <div>Ping:</div>
+                        <div>{t("tooltips.ping")}:</div>
                         <div>
                             {(() => {
                                 const result = dnsServerData
@@ -510,7 +508,7 @@ const Main = () => {
                                 if (result === "testing") {
                                     return (
                                         <span className="text-yellow-400">
-                                            Testing...
+                                            {t("tooltips.testing")}
                                         </span>
                                     );
                                 } else if (
@@ -530,7 +528,7 @@ const Main = () => {
                                 ) {
                                     return (
                                         <span className="text-red-400">
-                                            Failed
+                                            {t("tooltips.failed")}
                                         </span>
                                     );
                                 } else {
@@ -544,11 +542,11 @@ const Main = () => {
                         </div>
                     </div>
                     <div className="flex justify-between">
-                        <div>Interface:</div>
+                        <div>{t("tooltips.interface")}:</div>
                         <div>
                             {IfIdx === 0 ? (
                                 <span className="flex gap-1 items-center">
-                                    Auto
+                                    {t("tooltips.auto")}
                                     <span className="text-zinc-400">
                                         ({interfaceDnsInfo?.interface_name})
                                     </span>
@@ -560,7 +558,7 @@ const Main = () => {
                     </div>
                     {(interfaceDnsInfo?.dns_servers.length ?? 0) > 0 && (
                         <div className="flex justify-between">
-                            <div>Current DNS:</div>
+                            <div>{t("tooltips.current_dns")}:</div>
                             <div>
                                 {interfaceDnsInfo?.dns_servers.join(", ")}
                             </div>
@@ -569,8 +567,8 @@ const Main = () => {
                 </div>
                 <div className="flex gap-2">
                     <Tooltip
-                        aria-label="Clear DNS Cache"
-                        content="Clear DNS Cache"
+                        aria-label={t("tooltips.clear_dns_cache")}
+                        content={t("tooltips.clear_dns_cache")}
                         placement="top"
                     >
                         <Button isIconOnly onPress={handleClearDnsCache}>
@@ -578,8 +576,8 @@ const Main = () => {
                         </Button>
                     </Tooltip>
                     <Tooltip
-                        aria-label="Reset DNS"
-                        content="Reset DNS"
+                        aria-label={t("tooltips.reset_dns")}
+                        content={t("tooltips.reset_dns")}
                         placement="top"
                     >
                         <Button
@@ -591,8 +589,8 @@ const Main = () => {
                         </Button>
                     </Tooltip>
                     <Tooltip
-                        aria-label="Test Server"
-                        content="Test Server"
+                        aria-label={t("tooltips.test_server")}
+                        content={t("tooltips.test_server")}
                         placement="top"
                     >
                         <Button

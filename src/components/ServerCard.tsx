@@ -2,6 +2,7 @@ import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { PROTOCOLS, type SERVER } from "../types";
 import type { ServerTestResult } from "../hooks/useDns";
+import { useTranslation } from "react-i18next";
 
 interface ServerCardProps {
     server: SERVER;
@@ -11,13 +12,14 @@ interface ServerCardProps {
 }
 
 const ServerCard = ({ server, testResult, onEdit, onRemove }: ServerCardProps) => {
+    const { t } = useTranslation();
     const protocol = PROTOCOLS.find((p) => p.key === server.type);
 
     const getLatencyBadge = () => {
         if (testResult === null || testResult === undefined) return null;
         if (testResult === "testing") {
             return (
-                <span className="text-xs text-yellow-400">Testing...</span>
+                <span className="text-xs text-yellow-400">{t("tooltips.testing")}</span>
             );
         }
         if (testResult.success) {
@@ -25,7 +27,7 @@ const ServerCard = ({ server, testResult, onEdit, onRemove }: ServerCardProps) =
                 <span className="text-xs text-green-400">{testResult.latency}ms</span>
             );
         }
-        return <span className="text-xs text-red-400">Failed</span>;
+        return <span className="text-xs text-red-400">{t("tooltips.failed")}</span>;
     };
 
     return (
@@ -69,7 +71,7 @@ const ServerCard = ({ server, testResult, onEdit, onRemove }: ServerCardProps) =
                         variant="flat"
                         onPress={onEdit}
                     >
-                        Edit
+                        {t("tooltips.edit")}
                     </Button>
                     <Button
                         size="sm"
@@ -77,7 +79,7 @@ const ServerCard = ({ server, testResult, onEdit, onRemove }: ServerCardProps) =
                         variant="flat"
                         onPress={onRemove}
                     >
-                        Delete
+                        {t("tooltips.delete")}
                     </Button>
                 </div>
             </div>

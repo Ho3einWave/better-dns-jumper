@@ -8,45 +8,53 @@ import { Lan } from "../components/icons/Lan";
 import { Server } from "./icons/Server";
 import { Activity } from "./icons/Activity";
 import { Logs } from "./icons/Logs";
+import { Test } from "./icons/Test";
 import { Update } from "./icons/Update";
 import { useUpdater } from "../hooks/useUpdater";
+import { useTranslation } from "react-i18next";
 
 const TABS = [
     {
         key: "main",
-        title: "DNS",
         icon: <DNSServer className="text-xl" />,
         path: "/",
+        tooltipKey: "dns_tab",
     },
     {
         key: "servers",
-        title: "Servers",
         icon: <Server className="text-xl" />,
         path: "/servers",
+        tooltipKey: "servers_tab",
     },
     {
         key: "network-interfaces",
-        title: "Network Interfaces",
         icon: <Lan className="text-xl" />,
         path: "/network-interfaces",
+        tooltipKey: "network_interfaces_tab",
     },
     {
         key: "dns-activity",
-        title: "DNS Activity",
         icon: <Activity className="text-xl" />,
         path: "/dns-activity",
+        tooltipKey: "dns_activity_tab",
     },
     {
         key: "logs",
-        title: "Application Logs",
         icon: <Logs className="text-xl" />,
         path: "/logs",
+        tooltipKey: "logs_tab",
+    },
+    {
+        key: "benchmark",
+        icon: <Test className="text-xl" />,
+        path: "/benchmark",
+        tooltipKey: "benchmark_tab",
     },
     {
         key: "settings",
-        title: "Settings",
         icon: <Setting className="text-xl" />,
         path: "/settings",
+        tooltipKey: "settings_tab",
     },
 ] as const;
 
@@ -56,6 +64,7 @@ const Navigation = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const { isUpdateAvailable, openModal } = useUpdater();
+    const { t } = useTranslation();
     const [selectedKey, setSelectedKey] = useState<string>("main");
 
     // Update selected key based on current route
@@ -100,8 +109,8 @@ const Navigation = () => {
                         key={tab.key}
                         title={
                             <Tooltip
-                                aria-label={tab.title}
-                                content={tab.title}
+                                aria-label={t(tab.tooltipKey)}
+                                content={t(tab.tooltipKey)}
                                 placement="right"
                             >
                                 {tab.icon}
@@ -114,8 +123,8 @@ const Navigation = () => {
                         key="update"
                         title={
                             <Tooltip
-                                aria-label="Update Available"
-                                content="Update Available"
+                                aria-label={t("nav.updateAvailable")}
+                                content={t("nav.updateAvailable")}
                                 placement="right"
                             >
                                 <div className="relative">

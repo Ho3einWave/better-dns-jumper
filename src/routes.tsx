@@ -6,6 +6,7 @@ import Servers from "./screens/Servers";
 import Setting from "./screens/Setting";
 import DnsActivity from "./screens/DnsActivity";
 import Logs from "./screens/Logs";
+import Benchmark from "./screens/Benchmark";
 
 export const router = createHashRouter([
     {
@@ -31,6 +32,10 @@ export const router = createHashRouter([
             {
                 path: "/logs",
                 element: <Logs />,
+            },
+            {
+                path: "/benchmark",
+                element: <Benchmark />,
             },
             {
                 path: "/settings",

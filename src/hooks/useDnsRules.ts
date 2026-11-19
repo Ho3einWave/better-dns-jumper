@@ -46,3 +46,15 @@ export const useToggleDnsRule = () => {
         },
     });
 };
+
+export const useResetDnsRules = () => {
+    const queryClient = useQueryClient();
+    return useMutation({
+        mutationFn: () => {
+            return invoke<DnsRule[]>("reset_dns_rules");
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ["dns_rules"] });
+        },
+    });
+};

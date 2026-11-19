@@ -11,6 +11,7 @@ import { Select, SelectItem } from "@heroui/select";
 import { Button } from "@heroui/button";
 import { Chip } from "@heroui/chip";
 import { PROTOCOLS, type SERVER } from "../types";
+import { useTranslation } from "react-i18next";
 
 // Generate key from name: convert to uppercase, replace spaces/special chars with underscores
 const generateKeyFromName = (name: string): string => {
@@ -93,22 +94,23 @@ const isValidHostnamePort = (hostnamePort: string): boolean => {
 // Validate servers based on type
 const validateServers = (
     servers: string[],
-    type: "dns" | "doh" | "dot" | "doq" | "doh3"
+    type: "dns" | "doh" | "dot" | "doq" | "doh3",
+    t: (key: string, options?: Record<string, unknown>) => string
 ): { isValid: boolean; errors: string[] } => {
     const errors: string[] = [];
 
     if (servers.length === 0) {
-        errors.push("At least one server is required");
+        errors.push(t("validation.at_least_one"));
         return { isValid: false, errors };
     }
 
     if (type === "doh" && servers.length > 1) {
-        errors.push("DoH only accepts a single URL");
+        errors.push(t("validation.doh_single"));
         return { isValid: false, errors };
     }
 
     if (type === "dns" && servers.length > 2) {
-        errors.push("DNS servers can only have a maximum of 2 IP addresses");
+        errors.push(t("validation.dns_max_two"));
         return { isValid: false, errors };
     }
 
@@ -116,26 +118,26 @@ const validateServers = (
         (type === "dot" || type === "doq" || type === "doh3") &&
         servers.length > 1
     ) {
-        errors.push(`${type.toUpperCase()} only accepts a single server`);
+        errors.push(t(`validation.${type}_single`));
         return { isValid: false, errors };
     }
 
     servers.forEach((server, index) => {
         if (type === "dns") {
             if (!isValidIP(server)) {
-                errors.push(`Server ${index + 1} is not a valid IP address`);
+                errors.push(t("validation.invalid_ip", { index: index + 1 }));
             }
         } else if (type === "doh") {
             if (!isValidURL(server)) {
-                errors.push("Not a valid HTTPS URL");
+                errors.push(t("validation.invalid_doh"));
             }
         } else if (type === "dot" || type === "doq" || type === "doh3") {
-            // Validate with protocol prefix support
             if (!isValidHostnamePort(server)) {
                 errors.push(
-                    `Server ${index + 1} must be in format "${getProtocolPrefix(
-                        type
-                    )}hostname:port" (hostname can be domain or IP, port 1-65535)`
+                    t("validation.invalid_hostname_port", {
+                        index: index + 1,
+                        format: `${getProtocolPrefix(type)}hostname:port`,
+                    })
                 );
             }
         }
@@ -172,6 +174,7 @@ const ServerModal = ({
     mode,
     existingKeys = [],
 }: ServerModalProps) => {
+    const { t } = useTranslation();
     const [formData, setFormData] = useState<{
         type: "dns" | "doh" | "dot" | "doq" | "doh3";
         key: string;
@@ -298,7 +301,7 @@ const ServerModal = ({
                       .filter((s) => s.length > 0);
 
         if (serverList.length > 0) {
-            const validation = validateServers(serverList, formData.type);
+            const validation = validateServers(serverList, formData.type, t);
             setServerErrors(validation.errors);
         } else {
             setServerErrors([]);
@@ -324,7 +327,7 @@ const ServerModal = ({
         if (hostname.trim() && port.trim() && isValidHostname(hostname) && isValidPort(port)) {
             const protocolPrefix = getProtocolPrefix(formData.type as "dot" | "doq" | "doh3");
             const combined = `${protocolPrefix}${hostname.trim()}:${port.trim()}`;
-            const validation = validateServers([combined], formData.type);
+            const validation = validateServers([combined], formData.type, t);
             setServerErrors(validation.errors);
         } else {
             setServerErrors([]);
@@ -335,7 +338,7 @@ const ServerModal = ({
         setFormData({ ...formData, hostname: value });
         if (value.trim()) {
             if (!isValidHostname(value)) {
-                setHostnameError("Must be a valid domain name or IP address");
+                setHostnameError(t("validation.hostname_invalid"));
             } else {
                 setHostnameError("");
             }
@@ -349,7 +352,7 @@ const ServerModal = ({
         setFormData({ ...formData, port: value });
         if (value.trim()) {
             if (!isValidPort(value)) {
-                setPortError("Port must be between 1 and 65535");
+                setPortError(t("validation.port_invalid"));
             } else {
                 setPortError("");
             }
@@ -399,21 +402,21 @@ const ServerModal = ({
             formData.type === "doh3"
         ) {
             if (!formData.hostname.trim()) {
-                setHostnameError("Hostname is required");
+                setHostnameError(t("validation.hostname_required"));
                 return;
             }
             if (!formData.port.trim()) {
-                setPortError("Port is required");
+                setPortError(t("validation.port_required"));
                 return;
             }
 
             if (!isValidHostname(formData.hostname)) {
-                setHostnameError("Must be a valid domain name or IP address");
+                setHostnameError(t("validation.hostname_invalid"));
                 return;
             }
 
             if (!isValidPort(formData.port)) {
-                setPortError("Port must be between 1 and 65535");
+                setPortError(t("validation.port_invalid"));
                 return;
             }
 
@@ -432,7 +435,7 @@ const ServerModal = ({
                 .filter((s) => s.length > 0);
         }
 
-        const validation = validateServers(serverList, formData.type);
+        const validation = validateServers(serverList, formData.type, t);
         if (!validation.isValid) {
             setServerErrors(validation.errors);
             return;
@@ -442,15 +445,13 @@ const ServerModal = ({
 
         // Duplicate key check
         if (mode === "add" && existingKeys.includes(finalKey)) {
-            setDuplicateError(
-                "A server with this name already exists. Please choose a different name."
-            );
+            setDuplicateError(t("validation.duplicate_server"));
             return;
         }
 
         // Validate bootstrap IP if provided
         if (formData.bootstrapIp.trim() && !isValidIP(formData.bootstrapIp)) {
-            setBootstrapIpError("Must be a valid IPv4 address");
+            setBootstrapIpError(t("validation.bootstrap_invalid"));
             return;
         }
 
@@ -492,13 +493,13 @@ const ServerModal = ({
         >
             <ModalContent>
                 <ModalHeader>
-                    {mode === "add" ? "Add Server" : "Edit Server"}
+                    {mode === "add" ? t("tooltips.add_server") : t("tooltips.edit_server")}
                 </ModalHeader>
                 <ModalBody>
                     <div className="flex flex-col gap-3">
                         <div className="flex gap-2">
                             <Select
-                                label="Type"
+                                label={t("tooltips.type")}
                                 radius="lg"
                                 selectedKeys={[formData.type]}
                                 onSelectionChange={(keys) => {
@@ -512,29 +513,29 @@ const ServerModal = ({
                                 }}
                                 size="sm"
                             >
-                                <SelectItem key="dns">DNS</SelectItem>
-                                <SelectItem key="doh">DoH</SelectItem>
-                                <SelectItem key="dot">DoT</SelectItem>
-                                <SelectItem key="doq">DoQ</SelectItem>
-                                <SelectItem key="doh3">DoH3</SelectItem>
+                                <SelectItem key="dns">{t("protocols.dns.name")}</SelectItem>
+                                <SelectItem key="doh">{t("protocols.doh.name")}</SelectItem>
+                                <SelectItem key="dot">{t("protocols.dot.name")}</SelectItem>
+                                <SelectItem key="doq">{t("protocols.doq.name")}</SelectItem>
+                                <SelectItem key="doh3">{t("protocols.doh3.name")}</SelectItem>
                             </Select>
                             <Input
                                 radius="lg"
-                                label="Name"
+                                label={t("tooltips.name")}
                                 value={formData.name}
                                 onValueChange={(value) => {
                                     setFormData({ ...formData, name: value });
                                     setDuplicateError("");
                                 }}
                                 size="sm"
-                                placeholder="e.g., Google DNS"
+                                placeholder={t("placeholders.add_server_name")}
                                 isInvalid={!!duplicateError}
                                 errorMessage={duplicateError}
                             />
                         </div>
                         {currentProtocol && (
                             <p className="text-xs text-zinc-500 -mt-1 px-1">
-                                {currentProtocol.description}
+                                {t(`protocols.${currentProtocol.key}.description`)}
                             </p>
                         )}
                         {formData.type === "dot" ||
@@ -543,23 +544,23 @@ const ServerModal = ({
                             <div className="flex gap-2">
                                 <Input
                                     radius="lg"
-                                    label="Hostname"
+                                    label={t("tooltips.hostname")}
                                     value={formData.hostname}
                                     onValueChange={handleHostnameChange}
                                     size="sm"
-                                    placeholder="dns.google or 8.8.8.8"
-                                    description="Domain name or IP address"
+                                    placeholder={t("placeholders.hostname_placeholder")}
+                                    description={t("descriptions.hostname_desc")}
                                     isInvalid={!!hostnameError}
                                     errorMessage={hostnameError}
                                 />
                                 <Input
                                     radius="lg"
-                                    label="Port"
+                                    label={t("tooltips.port_label")}
                                     value={formData.port}
                                     onValueChange={handlePortChange}
                                     size="sm"
                                     placeholder={getDefaultPort(formData.type)}
-                                    description="1-65535"
+                                    description={t("descriptions.port_desc")}
                                     isInvalid={!!portError}
                                     errorMessage={portError}
                                     type="number"
@@ -568,19 +569,19 @@ const ServerModal = ({
                         ) : (
                             <Input
                                 radius="lg"
-                                label="Servers"
+                                label={t("tooltips.servers_field")}
                                 value={formData.servers}
                                 onValueChange={handleServersChange}
                                 size="sm"
                                 placeholder={
                                     formData.type === "dns"
-                                        ? "8.8.8.8, 8.8.4.4"
-                                        : "https://dns.google/dns-query"
+                                        ? t("placeholders.servers_placeholder_dns")
+                                        : t("placeholders.servers_placeholder_doh")
                                 }
                                 description={
                                     formData.type === "dns"
-                                        ? "Comma-separated IP addresses (max 2)"
-                                        : "HTTPS URL"
+                                        ? t("descriptions.servers_dns")
+                                        : t("descriptions.servers_doh")
                                 }
                                 isInvalid={serverErrors.length > 0}
                                 errorMessage={serverErrors.join(", ")}
@@ -597,7 +598,7 @@ const ServerModal = ({
                         {formData.type !== "dns" && (
                             <Input
                                 radius="lg"
-                                label="Server IP (optional)"
+                                label={t("tooltips.server_ip_optional")}
                                 value={formData.bootstrapIp}
                                 onValueChange={(value) => {
                                     setFormData({
@@ -606,15 +607,15 @@ const ServerModal = ({
                                     });
                                     if (value.trim() && !isValidIP(value)) {
                                         setBootstrapIpError(
-                                            "Must be a valid IPv4 address"
+                                            t("validation.bootstrap_invalid")
                                         );
                                     } else {
                                         setBootstrapIpError("");
                                     }
                                 }}
                                 size="sm"
-                                placeholder="e.g., 1.1.1.1"
-                                description="IP address to connect directly, bypassing DNS resolution"
+                                placeholder={t("placeholders.server_ip_placeholder")}
+                                description={t("descriptions.server_ip_desc")}
                                 isInvalid={!!bootstrapIpError}
                                 errorMessage={bootstrapIpError}
                             />
@@ -640,23 +641,23 @@ const ServerModal = ({
                                     onBlur={addTag}
                                     placeholder={
                                         formData.tags.length === 0
-                                            ? "Type a tag and press Enter..."
+                                            ? t("placeholders.tag_placeholder")
                                             : ""
                                     }
                                 />
                             </div>
                             <p className="text-xs text-zinc-500 mt-1 px-1">
-                                Press Enter or comma to add a tag
+                                {t("other.press_enter_tag")}
                             </p>
                         </div>
                     </div>
                 </ModalBody>
                 <ModalFooter>
                     <Button size="sm" variant="flat" onPress={onClose}>
-                        Cancel
+                        {t("tooltips.cancel")}
                     </Button>
                     <Button size="sm" color="primary" onPress={handleSave}>
-                        {mode === "add" ? "Add" : "Save"}
+                        {mode === "add" ? t("tooltips.add_btn") : t("tooltips.save")}
                     </Button>
                 </ModalFooter>
             </ModalContent>

@@ -4,7 +4,32 @@
 ![GitHub Repo stars](https://img.shields.io/github/stars/ho3einwave/better-dns-jumper?style=for-the-badge&logo=github&color=%23f7d000)
 
 
-# Better DNS Jumper
+# Better DNS Jumper — Türkçe (TR)
+
+> **Bu bir fork'tur.** Orijinal proje: **[Ho3einWave/better-dns-jumper](https://github.com/Ho3einWave/better-dns-jumper)** — GPL-3.0 lisanslı, teşekkürler.
+>
+> Türkçe arayüz, açıklayıcı tooltip'ler, Türkiye'ye göre düzenlenmiş varsayılan DNS listesi ve hazır engelleme kuralları içerir.
+> **Bu değişiklikler OpenCode (Space Bunny Free) adlı yapay zeka asistanı ile yapılmıştır.**
+
+## Bu fork'ta ne değişti?
+
+| Değişiklik | Açıklama |
+|---|---|
+| **Türkçe arayüz** | Tüm ekranlar, modallar, doğrulama mesajları Türkçe/İngilizce. Sağ üstten TR/EN geçişi — tercih kaydedilir, tarayıcı diline göre varsayılan belirlenir. |
+| **Açıklayıcı tooltip'ler** | Sekme, buton, form alanı ve ayar başlıklarının tamamında "ne işe yarar" açıklaması — aktif dilde. |
+| **Türkiye'ye uygun DNS listesi** | İran'a özel sunucular ve hatalı adresler çıkarıldı; Cloudflare, Google, Quad9, AdGuard, OpenDNS, CleanBrowsing, ControlD, Mullvad (güvenlik/aile/reklamsız/gizlilik varyantlarıyla) eklendi. Her adres Türkiye bağlantısından canlı test edildi. |
+| **Hazır DNS kuralları** | 16 yaygın reklam/takip alan adı (doubleclick, googlesyndication, criteo…) ilk açılışta gelir — hepsi kapalı, kullanıcı açıp kapatır. Kendi kuralını ekleyip düzenleyebilirsin. |
+| **Derleme düzeltmeleri** | `bun` bağımlılığı yerine `npm`; `hickory` kütüphaneleri 0.25.2'ye sabitlendi (0.26 API'si uyumsuz). |
+
+> **Not:** DNS kuralları yalnızca şifreli DNS modunda (DoH/DoT/DoQ/DoH3) çalışır. Düz DNS seçildiğinde yerel proxy devrede olmadığı için uygulanmaz.
+
+## Kurulum
+
+Masaüstünüzdeki `Better-DNS-Jumper-TR-Setup.exe` dosyasını çalıştırın, ya da [Releases](https://github.com/alperenalbay/better-dns-jumper-tr/releases) sayfasından indirin. DNS değiştirmek için yönetici izni gerekir.
+
+---
+
+# Better DNS Jumper (Orijinal)
 
 A fast, modern DNS manager built with **Tauri (Rust + React)**. Switch DNS servers, manage network interfaces, and route queries through encrypted DNS protocols — all from a clean, lightweight interface.
 

@@ -36,5 +36,5 @@ html {
 }
 
 .inner-container-size {
-    @apply max-h-[calc(100vh-45px)] min-w-[calc(100vw-90px)] min-h-[calc(100vh-45px)] max-w-[calc(100vw-90px)];
+    @apply max-h-[calc(100vh-45px)] min-w-[calc(100vw-90px)] min-h-[calc(100vh-45px)] max-w-[calc(100vw-90px)] border border-zinc-700;
 }

@@ -435,6 +435,25 @@ pub async fn toggle_dns_rule(
         .log_err("toggle_dns_rule")
 }
 
+/// Replace every rule with the built-in defaults (all disabled).
+/// Gives users who deleted the shipped blocklist a way to get it back.
+#[tauri::command(rename_all = "snake_case")]
+pub async fn reset_dns_rules(
+    app_handle: tauri::AppHandle,
+    rules: tauri::State<'_, Arc<RwLock<DnsRules>>>,
+) -> AppResult<Vec<DnsRule>> {
+    let defaults = crate::dns::dns_rules::default_rules();
+    {
+        let mut rules_guard = rules.write().await;
+        rules_guard.load_rules(defaults.clone());
+    }
+    persist_rules(&app_handle, &rules)
+        .await
+        .log_err("reset_dns_rules")?;
+    info!("DNS rules reset to {} built-in defaults", defaults.len());
+    Ok(defaults)
+}
+
 async fn persist_rules(
     app_handle: &tauri::AppHandle,
     rules: &Arc<RwLock<DnsRules>>,

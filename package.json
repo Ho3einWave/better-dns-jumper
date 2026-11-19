@@ -12,6 +12,7 @@
     "dependencies": {
         "@heroui/button": "^2.2.27",
         "@heroui/chip": "^2.2.22",
+        "@heroui/dropdown": "^2.3.32",
         "@heroui/input": "^2.4.28",
         "@heroui/modal": "^2.2.24",
         "@heroui/select": "^2.4.28",
@@ -31,20 +32,22 @@
         "@tauri-apps/plugin-updater": "~2",
         "@tauri-apps/plugin-window-state": "~2",
         "framer-motion": "^12.23.22",
+        "i18next": "^26.4.4",
         "react": "^19.1.0",
         "react-dom": "^19.1.0",
+        "react-i18next": "^17.0.16",
         "react-router": "^7.9.4",
         "tailwindcss": "^4.1.14",
         "usehooks-ts": "^3.1.1",
         "zustand": "^5.0.8"
     },
     "devDependencies": {
+        "@tauri-apps/cli": "^2",
         "@types/react": "^19.1.8",
         "@types/react-dom": "^19.1.6",
         "@vitejs/plugin-react": "^4.6.0",
         "typescript": "~5.8.3",
-        "vite": "^7.0.4",
-        "@tauri-apps/cli": "^2"
+        "vite": "^7.0.4"
     },
     "trustedDependencies": [
         "@heroui/shared-utils",

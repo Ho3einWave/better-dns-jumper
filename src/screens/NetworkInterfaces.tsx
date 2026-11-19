@@ -12,8 +12,10 @@ import { ScrollShadow } from "@heroui/scroll-shadow";
 import InterfaceIp from "../components/InterfaceIp";
 import { Input } from "@heroui/input";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 const NetworkInterfaces = () => {
+    const { t } = useTranslation();
     const [search, setSearch] = useState("");
     const { data: interfaces, refetch: refetchInterfaces } = useInterfaces({
         // Push notifications (useNetworkChangeEvents) drive the refresh; this is only
@@ -31,7 +33,7 @@ const NetworkInterfaces = () => {
         enable: boolean,
     ) => {
         addToast({
-            title: "Changing interface state...",
+            title: t("other.change_interface_state"),
             color: "primary",
             promise: changeInterfaceStatePromise(interfaceIdx, enable),
         });
@@ -94,7 +96,7 @@ const NetworkInterfaces = () => {
             <div className="absolute left-20 inner-container-size bg-zinc-900/50 rounded-2xl flex flex-col gap-2 overflow-hidden px-2 py-2">
                 <div>
                     <Input
-                        placeholder="Search name, description or IP"
+                        placeholder={t("tooltips.search_interfaces")}
                         value={search}
                         onChange={(e) => setSearch(e.target.value)}
                     />
@@ -148,7 +150,7 @@ const NetworkInterfaces = () => {
                                         ) : (
                                             <Disconnect className="text-lg" />
                                         )}
-                                        {isDisabled ? "Enable" : "Disable"}
+                                        {isDisabled ? t("tooltips.enable") : t("tooltips.disable")}
                                     </Button>
                                 </div>
                             </div>

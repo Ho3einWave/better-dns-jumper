@@ -3,8 +3,10 @@ import { useAutoStartStore } from "../stores/useAutoStartStore";
 import { useEffect } from "react";
 import TestDomain from "../components/Setting/TestDomain";
 import BootstrapResolver from "../components/Setting/BootstrapResolver";
+import { useTranslation } from "react-i18next";
 
 const Setting = () => {
+    const { t } = useTranslation();
     const { isAutoStartEnabled, isLoading, setIsAutoStartEnabled, load } =
         useAutoStartStore();
 
@@ -21,17 +23,16 @@ const Setting = () => {
             <div className="absolute left-20 inner-container-size bg-zinc-900/50 rounded-2xl   flex flex-col overflow-hidden gap-2 py-2">
                 <div className="px-2 pl-4  flex items-center justify-between">
                     <div>
-                        <span>Setting</span>
+                        <span>{t("other.setting")}</span>
                     </div>
                 </div>
 
                 <div className="px-4 mt-4 flex flex-col gap-3">
                     <div className="flex items-center justify-between gap-2">
                         <div>
-                            <span>Start on system launch</span>
+                            <span>{t("other.start_on_launch")}</span>
                             <p className="text-sm text-zinc-400">
-                                Automatically open Better DNS Jumper when you
-                                log in to your computer.
+                                {t("other.auto_start_desc")}
                             </p>
                         </div>
                         <Switch

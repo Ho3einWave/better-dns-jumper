@@ -1,3 +1,9 @@
+export type InstalledApp = {
+    name: string;
+    publisher: string | null;
+    install_location: string | null;
+};
+
 export type SERVER = {
     type: "doh" | "dns" | "dot" | "doq" | "doh3";
     key: string;

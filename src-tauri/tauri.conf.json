@@ -4,9 +4,9 @@
     "version": "0.5.1",
     "identifier": "ir.betterdnsjumper.app",
     "build": {
-        "beforeDevCommand": "bun run dev",
+        "beforeDevCommand": "npm run dev",
         "devUrl": "http://localhost:1420",
-        "beforeBuildCommand": "bun run build",
+        "beforeBuildCommand": "npm run build",
         "frontendDist": "../dist"
     },
     "app": {
@@ -15,8 +15,10 @@
                 "title": "Better DNS Jumper",
                 "width": 850,
                 "height": 520,
-                "shadow": false,
-                "resizable": false,
+                "shadow": true,
+                "resizable": true,
+                "minWidth": 900,
+                "minHeight": 600,
                 "backgroundColor": "#09090b"
             }
         ],

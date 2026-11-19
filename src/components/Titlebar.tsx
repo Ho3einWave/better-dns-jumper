@@ -1,6 +1,7 @@
 import { Minimize } from "./icons/Minimize";
 import { Close } from "./icons/Close";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import LanguageSwitcher from "./LanguageSwitcher";
 
 const Titlebar = () => {
     const handleMinimize = () => {
@@ -23,7 +24,8 @@ const Titlebar = () => {
                 </span>{" "}
                 DNS Jumper
             </h1>
-            <div className="flex gap-1">
+            <div className="flex items-center gap-1">
+                <LanguageSwitcher />
                 <button
                     className="hover:bg-zinc-800 px-2 py-2 cursor-pointer text-zinc-500 hover:text-white"
                     onClick={handleMinimize}

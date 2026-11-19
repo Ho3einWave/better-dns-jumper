@@ -17,9 +17,10 @@ use tauri_plugin_store::StoreExt;
 use tauri_plugin_window_state::StateFlags;
 
 use commands::app_logs::{clear_app_logs, get_app_logs, get_log_file_path, open_log_dir};
+use commands::apps::{list_installed_apps, test_tcp_connect};
 use commands::dns::{
     clear_dns, clear_dns_cache, clear_dns_logs, delete_dns_rule, get_dns_logs, get_dns_rules,
-    get_interface_dns_info, save_dns_rule, set_dns, test_server, toggle_dns_rule,
+    get_interface_dns_info, reset_dns_rules, save_dns_rule, set_dns, test_server, toggle_dns_rule,
 };
 use commands::net_interfaces::{change_interface_state, get_best_interface, get_interfaces};
 use tauri::RunEvent;
@@ -87,10 +88,13 @@ pub fn run() {
             save_dns_rule,
             delete_dns_rule,
             toggle_dns_rule,
+            reset_dns_rules,
             get_app_logs,
             clear_app_logs,
             get_log_file_path,
             open_log_dir,
+            list_installed_apps,
+            test_tcp_connect,
         ])
         .manage(Mutex::new(AppState {
             dns_server: DnsServer::new(log_sender, rules.clone()),
@@ -155,7 +159,32 @@ pub fn run() {
                             Err(e) => error!("Failed to parse persisted DNS rules: {}", e),
                         }
                     }
-                    None => debug!("No persisted DNS rules found"),
+                    None => {
+                        // First launch: seed the built-in blocklist (all disabled —
+                        // nothing is blocked until the user toggles a rule on).
+                        let defaults = crate::dns::dns_rules::default_rules();
+                        info!(
+                            "No persisted DNS rules found — seeding {} built-in defaults",
+                            defaults.len()
+                        );
+                        let rules_deferred = rules_for_setup.clone();
+                        let defaults_for_task = defaults.clone();
+                        match rules_for_setup.try_write() {
+                            Ok(mut rules_guard) => rules_guard.load_rules(defaults.clone()),
+                            Err(_) => {
+                                tokio::spawn(async move {
+                                    rules_deferred.write().await.load_rules(defaults_for_task);
+                                });
+                            }
+                        }
+                        store.set(
+                            "rules",
+                            serde_json::to_value(&defaults).unwrap_or_default(),
+                        );
+                        if let Err(e) = store.save() {
+                            error!("Failed to persist default DNS rules: {}", e);
+                        }
+                    }
                 },
                 Err(e) => error!("Failed to open DNS rules store: {}", e),
             }
